@@ -470,6 +470,8 @@ mod tests {
                 mechanics: alloc::vec![],
                 villain: None,
                 lights_out_rounds: 0,
+                world_state: serde_json::Value::Null,
+                map_gen: None,
             },
             codex: Value::Array(alloc::vec![]),
             rng: crate::world::rng::Rng::seeded(0),

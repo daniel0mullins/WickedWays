@@ -978,6 +978,8 @@ mod tests {
             mechanics: alloc::vec![],
             villain: None,
             lights_out_rounds: 0,
+            world_state: serde_json::Value::Null,
+            map_gen: None,
         };
 
         let mut characters = BTreeMap::new();

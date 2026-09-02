@@ -1,0 +1,827 @@
+# The Dare at Solomon's Rest — survive one night in the old Masonic cemetery.
+#
+# Four teenagers take a dare: last until daybreak inside the locked gates of
+# Solomon's Rest. The Sexton — the cemetery's dead groundskeeper — hunts them
+# with a deck of Wicked Ways cards built to split the party, because the old
+# compact only lets him take the living when they are ALONE. The map is
+# procedurally generated ([mapGen]): every playthrough lays the yards, crypts,
+# and paths out differently, with the two locked crypts (`sealed`) always
+# behind their keyed doors. A world-scoped night clock (worldGet/setWorld)
+# marches toward daybreak; the party wins if ANYONE is still conscious when it
+# strikes, and loses when the whole party is dead or incapacitated.
+
+title = "The Dare at Solomon's Rest"
+startRoom = "Lychgate"
+timeoutNarration = "The bell tolls an hour no clock owns. You count them: thirteen. Dawn is not coming — not for you, not ever — and somewhere among the stones the Sexton begins, unhurried, to dig four new graves."
+
+[opts]
+maxRounds = 60
+baseEncounterChance = 25
+
+# ── Archetypes: the trope squad ───────────────────────────────────────────────
+[[archetypes]]
+id = "quiet-one"
+name = "The Quiet One"
+baseStats = { health = 9, sanity = 13, energy = 9 }
+immunities = ["panic"]
+
+[[archetypes]]
+id = "valedictorian"
+name = "The Valedictorian"
+baseStats = { health = 8, sanity = 14, energy = 8 }
+inventorySlots = 1
+immunities = ["confused"]
+
+[[archetypes]]
+id = "quarterback"
+name = "The Quarterback"
+baseStats = { health = 14, sanity = 7, energy = 12 }
+inventorySlots = 2
+
+[[archetypes]]
+id = "cheer-captain"
+name = "The Cheer Captain"
+baseStats = { health = 9, sanity = 8, energy = 14 }
+immunities = ["fear"]
+
+# ── Rooms (the map is generated — no [[exits]]; see [mapGen] below) ──────────
+[[rooms]]
+name = "Lychgate"
+description = "The roofed gate of Solomon's Rest. The iron scrollwork spells a square and compasses, and the padlock your friends clicked shut behind you is still warm."
+spawnModifier = 0
+
+[[rooms]]
+name = "Gravel Path"
+description = "A ribbon of white gravel between leaning rows of slate. Your footsteps sound much louder than they should."
+
+[[rooms]]
+name = "Caretakers Lodge"
+description = "A one-room stone lodge, door ajar. A kettle sits on a cold stove, and a coat hangs by the door as if its owner means to return."
+spawnModifier = 0
+
+[[rooms]]
+name = "Toolshed"
+description = "A lean-to of tar-papered boards. Rakes, twine, and grave-digging tools hang in orderly silhouettes."
+spawnModifier = 0
+
+[[rooms]]
+name = "Chapel of the Compasses"
+description = "A small lodge chapel. Votive candles gutter beneath a wall of mason's marks, and a figure in an old-fashioned coat stands guard at the inner door — through you, the candlelight passes him entirely."
+
+[[rooms]]
+name = "Undercroft"
+description = "A vaulted cellar beneath the chapel, black and bone-dry. Whatever the lodge kept down here, they kept it locked."
+dark = true
+spawnModifier = 0
+
+[[rooms]]
+name = "Old Yard"
+description = "The oldest graves, their inscriptions worn to braille. A wrought-iron fence sags around a family plot, spikes loose in their sockets."
+
+[[rooms]]
+name = "Potters Field"
+description = "Unmarked mounds under thistle. Something small and masked rummages in the leaf litter."
+spawnModifier = 2
+
+[[rooms]]
+name = "Widows Willow"
+description = "A great willow weeps over a single white stone. A woman in mourning gray stands beneath it — she has been standing there a very long time."
+spawnModifier = 0
+
+[[rooms]]
+name = "Mausoleum Row"
+description = "A street of little stone houses for the dead. One bronze door at the row's end is newer than the rest, and something inside one of the crypts is breathing."
+
+[[rooms]]
+name = "Founders Mausoleum"
+description = "The founder's vault. A marble sarcophagus, a wall of lodge regalia — and a long oak case with brass hinges, the kind made for things that fire."
+dark = true
+spawnModifier = 0
+
+[[rooms]]
+name = "Columbarium"
+description = "Walls of little brass-doored niches, urn after urn. A few doors hang open, ash spilled like spent hourglasses."
+
+[[rooms]]
+name = "Ossuary"
+description = "A half-sunken vault stacked with folded bones. The femurs are sorted by length. Someone was very patient."
+dark = true
+
+[[rooms]]
+name = "Charnel House"
+description = "A windowless outbuilding that smells of quicklime and old earth. The workbench is stained in ways a workbench should not be."
+dark = true
+
+[[rooms]]
+name = "Obelisk Circle"
+description = "Nine granite obelisks in a ring, each carved with an all-seeing eye. Standing in the center, you are certain all nine are looking at you."
+
+[[rooms]]
+name = "Yew Alley"
+description = "A corridor of black yews clipped into walls. The dark between their trunks is total, and now and then it shifts."
+
+[[rooms]]
+name = "Reflecting Pool"
+description = "A long, still pool skinned with leaves. The reflections in it are a half-second behind, and one of them is not yours."
+
+[[rooms]]
+name = "Bone Hollow"
+description = "A sunken dell where the ground has settled over something. Fog pools here knee-deep, and the grass grows in rib-shaped rows."
+dark = true
+spawnModifier = 2
+
+# ── Procedural map: different every playthrough ──────────────────────────────
+[mapGen]
+extraConnections = 0.3
+maxExitsPerRoom = 5
+sealed = ["Undercroft", "Founders Mausoleum"]
+
+[[mapGen.required]]
+from = "Lychgate"
+to = "Gravel Path"
+
+[[mapGen.required]]
+from = "Chapel of the Compasses"
+to = "Undercroft"
+behavior = "undercroft-door"
+name = "undercroft stair-door"
+initialState = { unlocked = false }
+
+[[mapGen.required]]
+from = "Mausoleum Row"
+to = "Founders Mausoleum"
+behavior = "founders-door"
+name = "founders bronze door"
+initialState = { unlocked = false }
+
+# ── Mobs ─────────────────────────────────────────────────────────────────────
+# THE VILLAIN. He cannot be harmed at all, and he cannot harm YOU while a
+# conscious friend stands in the same room (see the lone-prey mechanic) — a
+# rule the night reveals piece by piece.
+[[mobs]]
+name = "The Sexton"
+stats = { health = 20, sanity = 12, energy = 12 }
+room = "Caretakers Lodge"
+naturalAttack = { stat = "health", power = 10 }
+actionsPerRound = 2
+baseEscapeChance = 80
+
+# Supernatural — each falls only to its bane (see the grave-wards mechanic).
+[[mobs]]
+name = "Wight of the Founder"
+stats = { health = 8, sanity = 6, energy = 4 }
+room = "Mausoleum Row"
+drops = ["founder-key"]
+naturalAttack = { stat = "health", power = 4 }
+lightAverse = true
+
+[[mobs]]
+name = "The Tyler"
+stats = { health = 6, sanity = 5, energy = 6 }
+room = "Chapel of the Compasses"
+drops = ["undercroft-key"]
+naturalAttack = { stat = "sanity", power = 3 }
+
+# Innocuous — any weapon (or a good shove) will do.
+[[mobs]]
+name = "Raccoon"
+stats = { health = 3, sanity = 3, energy = 5 }
+room = "Potters Field"
+naturalAttack = { stat = "health", power = 1 }
+baseEscapeChance = 70
+
+# ── Roving encounters ────────────────────────────────────────────────────────
+[[formations]]
+key = "rat-swarm"
+weight = 4
+mobs = [
+  { name = "Cemetery Rat", stats = { health = 2, sanity = 2, energy = 3 }, naturalAttack = { stat = "health", power = 1 }, baseEscapeChance = 60, actionsPerRound = 2 },
+  { name = "Cemetery Rat", stats = { health = 2, sanity = 2, energy = 3 }, naturalAttack = { stat = "health", power = 1 }, baseEscapeChance = 60, actionsPerRound = 2 },
+]
+
+[[formations]]
+key = "stray-raccoon"
+weight = 3
+mobs = [
+  { name = "Raccoon", stats = { health = 3, sanity = 3, energy = 5 }, naturalAttack = { stat = "health", power = 1 }, baseEscapeChance = 70, actionsPerRound = 2 },
+]
+
+[[formations]]
+key = "carrion-crows"
+weight = 3
+mobs = [
+  { name = "Carrion Crow", stats = { health = 2, sanity = 2, energy = 4 }, naturalAttack = { stat = "sanity", power = 1 }, baseEscapeChance = 75, actionsPerRound = 2 },
+]
+
+[[formations]]
+key = "spectral-hound"
+weight = 2
+mobs = [
+  { name = "Spectral Hound", stats = { health = 6, sanity = 4, energy = 4 }, naturalAttack = { stat = "sanity", power = 3 }, baseEscapeChance = 40, actionsPerRound = 2, lightAverse = true },
+]
+
+# ── Loot ─────────────────────────────────────────────────────────────────────
+[[loot]]
+name = "abandoned-backpack"
+room = "Lychgate"
+items = ["soda", "bandages"]
+description = "Somebody's backpack, dropped at the gate. Whoever dared whoever, they left in a hurry."
+
+[[loot]]
+name = "tool-rack"
+room = "Toolshed"
+items = ["shovel", "lantern"]
+description = "A rack of grave-tender's tools."
+
+[[loot]]
+name = "votive-shelf"
+room = "Chapel of the Compasses"
+items = ["torch", "hymnal"]
+description = "A shelf of candles and one long processional torch, pitch-headed and ready."
+
+[[loot]]
+name = "iron-fence"
+room = "Old Yard"
+items = ["fence-spike"]
+description = "The sagging plot fence. One decorative spike lifts free with a squeal."
+
+[[loot]]
+name = "fallen-marker"
+room = "Potters Field"
+items = ["grave-marker"]
+description = "A toppled wooden grave marker, weathered to a club's heft."
+
+[[loot]]
+name = "yew-gate"
+room = "Yew Alley"
+items = ["fence-spike-2"]
+description = "A rusted side-gate wedged into the yews, its finial spike loose."
+
+[[loot]]
+name = "open-niche"
+room = "Columbarium"
+items = ["silver-trowel"]
+description = "A niche whose brass door hangs open. Inside, wrapped in velvet, lies a ceremonial trowel — lodge silver, cold as a promise."
+
+[[loot]]
+name = "lime-bench"
+room = "Charnel House"
+items = ["hunting-knife"]
+description = "The stained workbench. Beneath it, wrapped in oilcloth and shoved deep against the wall, something with an edge."
+
+[[loot]]
+name = "sunken-reliquary"
+room = "Ossuary"
+items = ["smelling-salts"]
+description = "A little tin reliquary tucked between femurs."
+
+[[loot]]
+name = "offering-bowl"
+room = "Obelisk Circle"
+items = ["whiskey-flask"]
+description = "A stone bowl at the circle's center, where someone still leaves offerings."
+
+[[loot]]
+name = "drowned-lockbox"
+room = "Reflecting Pool"
+items = ["cough-drops"]
+description = "A rusted lockbox lying in the shallows, lid sprung."
+
+[[loot]]
+name = "undercroft-cache"
+room = "Undercroft"
+items = ["machete", "first-aid-kit"]
+description = "A lodge storage chest, banded in iron. The masons kept their working tools sharp."
+
+[[loot]]
+name = "founders-gun-case"
+room = "Founders Mausoleum"
+items = ["revolver", "sextons-ledger"]
+description = "The long oak case, velvet-lined: the founder was buried with his sidearm — and with a ledger he perhaps meant no one to read."
+
+# ── Material caches + field recipes ──────────────────────────────────────────
+[[caches]]
+name = "kindling-pile"
+room = "Toolshed"
+materials = { wood = 2, cloth = 2 }
+
+[[caches]]
+name = "deadfall-branches"
+room = "Bone Hollow"
+materials = { wood = 2, cloth = 1 }
+
+[[caches]]
+name = "shroud-scraps"
+room = "Ossuary"
+materials = { cloth = 2 }
+
+[[recipes]]
+id = "field-torch"
+outputName = "Grave Torch"
+outputItem = "torch"
+materials = { wood = 1, cloth = 1 }
+
+[[recipes]]
+id = "torn-bandage"
+outputName = "Torn Bandage"
+outputItem = "bandage-roll"
+materials = { cloth = 2 }
+
+# ── NPCs ─────────────────────────────────────────────────────────────────────
+[[npcs]]
+name = "Widow Marbury"
+stats = { health = 1.0, sanity = 1.0, energy = 1.0 }
+room = "Widows Willow"
+behavior = "widow-marbury"
+
+# ── Scenes ───────────────────────────────────────────────────────────────────
+[[scenes]]
+room = "Lychgate"
+key = "the-dare"
+phase = "enter"
+
+[[scenes]]
+room = "Gravel Path"
+key = "the-watcher"
+phase = "enter"
+
+[[scenes]]
+room = "Undercroft"
+key = "undercroft-chill"
+phase = "enter"
+
+[[scenes]]
+room = "Founders Mausoleum"
+key = "founders-reveal"
+phase = "enter"
+
+# ── The Villain & his deck ───────────────────────────────────────────────────
+[villain]
+character = "The Sexton"
+deck = [
+  "wicked:shadow-step", "wicked:shadow-step", "wicked:shadow-step",
+  "wicked:scatter", "wicked:scatter",
+  "wicked:lights-out", "wicked:lights-out",
+  "wicked:ruin",
+  "toll-the-black-bell", "toll-the-black-bell",
+  "cold-hands", "cold-hands",
+]
+
+[[cards]]
+key = "wicked:shadow-step"
+name = "Shadow Step"
+text = "The Sexton is where the lantern-light is not."
+
+[[cards]]
+key = "wicked:scatter"
+name = "Scatter the Flock"
+text = "The ground opens under every pair of feet at once."
+
+[[cards]]
+key = "wicked:lights-out"
+name = "Lights Out"
+text = "Every flame in the cemetery gutters and dies."
+config = { rounds = 2 }
+
+[[cards]]
+key = "wicked:ruin"
+name = "Rot and Ruin"
+text = "What you carry, the grave-damp claims."
+
+[[cards]]
+key = "toll-the-black-bell"
+name = "Toll the Black Bell"
+text = "The chapel bell rings backward, and the night grows two hours longer."
+
+[[cards]]
+key = "cold-hands"
+name = "Cold Hands from Below"
+text = "Fingers close around every living ankle in the yard."
+
+# ── Victory ──────────────────────────────────────────────────────────────────
+[[victory.win]]
+key = "survived-to-daybreak"
+test = "worldGet('daybreak', false) && some(party, !includes(element.status, 'ko'))"
+narration = "Gray light crests the yews, and the birdsong is suddenly, absurdly ordinary. Down the rows a lantern gutters out, a spade is shouldered, and the Sexton goes below without a backward glance. The lychgate stands open. Whoever is still on their feet walks out of Solomon's Rest — and nobody ever takes the dare again."
+
+[[victory.lose]]
+key = "the-flock-is-taken"
+test = "length(party) > 0 && every(party, includes(element.status, 'ko'))"
+narration = "The last of you goes down, and the yard falls quiet. Unhurried footsteps. The scrape of a spade. The Sexton works until the sky pales, and by morning Solomon's Rest has four new mounds, unmarked, dug together — because even now, he keeps you together."
+
+# ── Mechanic opt-ins (authored order is precedence) ──────────────────────────
+[[mechanics]]
+key = "night-clock"
+[[mechanics]]
+key = "lone-prey"
+[[mechanics]]
+key = "grave-wards"
+
+# ── Items ────────────────────────────────────────────────────────────────────
+# Light + bane: fire for the wight.
+[[items]]
+key = "torch"
+name = "Grave Torch"
+type = "weapon"
+stat = "health"
+modifier = 2
+equippable = true
+destroyable = true
+slot = "hand"
+emitsLight = true
+maxDurability = 14
+recipe = { wood = 1, cloth = 1 }
+aliases = ["torch", "brand", "fire"]
+
+[[items]]
+key = "lantern"
+name = "Storm Lantern"
+type = "weapon"
+stat = "health"
+modifier = 0
+equippable = true
+destroyable = true
+slot = "hand"
+emitsLight = true
+recipe = { item = 1 }
+aliases = ["lantern", "lamp", "light"]
+
+# Improvised weapons — easy to find.
+[[items]]
+key = "fence-spike"
+name = "Iron Fence Spike"
+type = "weapon"
+stat = "health"
+modifier = 3
+equippable = true
+destroyable = true
+slot = "hand"
+maxDurability = 10
+recipe = { iron = 1 }
+aliases = ["spike", "iron spike", "fence spike"]
+
+[[items]]
+key = "fence-spike-2"
+name = "Rusted Finial Spike"
+type = "weapon"
+stat = "health"
+modifier = 3
+equippable = true
+destroyable = true
+slot = "hand"
+maxDurability = 8
+recipe = { iron = 1 }
+aliases = ["finial", "rusted spike"]
+
+[[items]]
+key = "shovel"
+name = "Grave-Digger's Shovel"
+type = "weapon"
+stat = "health"
+modifier = 3
+equippable = true
+destroyable = true
+slot = "hand"
+twoHanded = true
+maxDurability = 12
+recipe = { wood = 1, iron = 1 }
+aliases = ["shovel", "spade"]
+
+[[items]]
+key = "grave-marker"
+name = "Wooden Grave Marker"
+type = "weapon"
+stat = "health"
+modifier = 2
+equippable = true
+destroyable = true
+slot = "hand"
+maxDurability = 6
+recipe = { wood = 1 }
+aliases = ["marker", "plank"]
+
+# Bane: lodge silver for the hounds.
+[[items]]
+key = "silver-trowel"
+name = "Ceremonial Silver Trowel"
+type = "weapon"
+stat = "health"
+modifier = 3
+equippable = true
+destroyable = true
+slot = "hand"
+maxDurability = 12
+recipe = { silver = 1 }
+lore = "Lodge silver, engraved: 'TO SPREAD THE CEMENT OF BROTHERLY LOVE.' The working tool of the craft — and, the old stories say, the one metal the beasts that never lived cannot abide."
+aliases = ["trowel", "silver"]
+
+# Real weapons — very well hidden.
+[[items]]
+key = "hunting-knife"
+name = "Hunting Knife"
+type = "weapon"
+stat = "health"
+modifier = 5
+equippable = true
+destroyable = true
+slot = "hand"
+maxDurability = 16
+aliases = ["knife", "blade"]
+
+[[items]]
+key = "machete"
+name = "Brush Machete"
+type = "weapon"
+stat = "health"
+modifier = 6
+equippable = true
+destroyable = true
+slot = "hand"
+maxDurability = 14
+aliases = ["machete"]
+
+[[items]]
+key = "revolver"
+name = "Founder's Revolver"
+type = "weapon"
+stat = "health"
+modifier = 8
+equippable = true
+destroyable = true
+slot = "hand"
+maxDurability = 6
+lore = "A lodge-engraved top-break revolver, oiled and loaded. Six shots. The founder believed in being prepared for his own funeral."
+aliases = ["revolver", "gun", "pistol"]
+
+# Supplies.
+[[items]]
+key = "bandages"
+name = "Roll of Bandages"
+type = "consumable"
+stat = "health"
+modifier = 4
+usable = true
+destroyable = true
+recipe = { cloth = 1 }
+aliases = ["bandages", "gauze"]
+
+[[items]]
+key = "bandage-roll"
+name = "Torn Bandage"
+type = "consumable"
+stat = "health"
+modifier = 3
+usable = true
+destroyable = true
+recipe = { cloth = 2 }
+aliases = ["bandage"]
+
+[[items]]
+key = "first-aid-kit"
+name = "Lodge First-Aid Kit"
+type = "consumable"
+stat = "health"
+modifier = 7
+usable = true
+destroyable = true
+recipe = { cloth = 2, healing = 1 }
+aliases = ["kit", "first aid"]
+
+[[items]]
+key = "smelling-salts"
+name = "Smelling Salts"
+type = "consumable"
+stat = "sanity"
+modifier = 5
+usable = true
+destroyable = true
+recipe = { healing = 1 }
+aliases = ["salts"]
+
+[[items]]
+key = "whiskey-flask"
+name = "Offering Flask"
+type = "consumable"
+stat = "sanity"
+modifier = 3
+usable = true
+destroyable = true
+recipe = { item = 1 }
+aliases = ["flask", "whiskey"]
+
+[[items]]
+key = "soda"
+name = "Warm Soda"
+type = "consumable"
+stat = "energy"
+modifier = 4
+usable = true
+destroyable = true
+recipe = { item = 1 }
+aliases = ["soda", "cola"]
+
+[[items]]
+key = "cough-drops"
+name = "Tin of Cough Drops"
+type = "consumable"
+stat = "energy"
+modifier = 3
+usable = true
+destroyable = true
+recipe = { item = 1 }
+aliases = ["tin", "drops"]
+
+# Lore items.
+[[items]]
+key = "hymnal"
+name = "Lodge Hymnal"
+type = "consumable"
+stat = "sanity"
+modifier = 0
+destroyable = true
+recipe = { item = 1 }
+lore = "A funeral hymnal, margins crowded with a steady old hand: 'For the risen flesh, FLAME. For the unquiet spirit, COLD IRON. For the beasts that never lived, the craft's own SILVER. For the Warden of the Yard — nothing of this world. Endure him.'"
+aliases = ["hymnal", "book"]
+
+[[items]]
+key = "sextons-ledger"
+name = "The Sexton's Ledger"
+type = "consumable"
+stat = "sanity"
+modifier = 0
+destroyable = true
+droppable = false
+recipe = { item = 1 }
+lore = "A burial ledger in a cramped, patient hand. The last page is a compact, witnessed by nine seals: 'The Warden of the Yard shall keep Solomon's Rest from dusk-bell to daybreak, and shall claim of trespassers ONLY THE SUNDERED — the one cut off from the flock. While two of the living stand witness to one another he shall not raise his hand, and at first light he shall go below. So mote it be.' Someone has underlined 'only the sundered' three times."
+aliases = ["ledger", "journal"]
+
+# Keys.
+[[items]]
+key = "founder-key"
+name = "Founder's Bronze Key"
+keyCode = "founder"
+aliases = ["bronze key", "founder key", "key"]
+
+[[items]]
+key = "undercroft-key"
+name = "Tyler's Brass Key"
+keyCode = "undercroft"
+aliases = ["brass key", "tyler key", "key"]
+
+# ── Behaviors: keyed doors ───────────────────────────────────────────────────
+[behaviors.exit.undercroft-door]
+canPass = "stateGet('unlocked', false) || hasKey(actor, 'undercroft')"
+failMessage = "The stair-door to the undercroft is locked — a keyhole of old brass, and the Tyler's post stands between you and whatever opens it."
+runScript = '''
+  when !stateGet('unlocked', false) {
+    set state.unlocked = true
+    pass 'The brass key turns twice. The stair-door swings open onto cellar dark.'
+  }
+'''
+
+[behaviors.exit.founders-door]
+canPass = "stateGet('unlocked', false) || hasKey(actor, 'founder')"
+failMessage = "The bronze door of the founders mausoleum is locked fast. The keyhole is shaped like a compass rose."
+runScript = '''
+  when !stateGet('unlocked', false) {
+    set state.unlocked = true
+    pass 'The bronze key grinds through a century of verdigris, and the founders door swings inward.'
+  }
+'''
+
+# ── Behaviors: consumables ───────────────────────────────────────────────────
+[behaviors.item.bandages]
+onUse = "emit adjustStat(actor, health, 4)"
+
+[behaviors.item.bandage-roll]
+onUse = "emit adjustStat(actor, health, 3)"
+
+[behaviors.item.first-aid-kit]
+onUse = "emit adjustStat(actor, health, 7)"
+
+[behaviors.item.smelling-salts]
+onUse = "emit adjustStat(actor, sanity, 5)"
+
+[behaviors.item.whiskey-flask]
+onUse = "emit adjustStat(actor, sanity, 3)"
+
+[behaviors.item.soda]
+onUse = "emit adjustStat(actor, energy, 4)"
+
+[behaviors.item.cough-drops]
+onUse = "emit adjustStat(actor, energy, 3)"
+
+# ── Behaviors: NPC ───────────────────────────────────────────────────────────
+[behaviors.npc.widow-marbury]
+description = "A woman in mourning gray beneath the willow, her veil moving in a wind you cannot feel. Her grief is a hundred years old and perfectly patient."
+
+[behaviors.npc.widow-marbury.default]
+match = ""
+response = "You should never have come in on a dare, children. But you are in now, and the gates keep till morning. Listen to an old widow: whatever else you do tonight, stay TOGETHER. The Sexton walks."
+
+[[behaviors.npc.widow-marbury.dialogue]]
+match = { fuzzy = ["sexton"] }
+response = "He dug every grave here, and then his own, and did not stop working. The lodge bound him with a compact: from dusk-bell to daybreak he keeps the yard — but he may take only the sundered, the one cut off from the flock. While another living soul stands beside you, his hand is stayed. He knows it. It is why he will try so hard to get you alone."
+
+[[behaviors.npc.widow-marbury.dialogue]]
+match = { fuzzy = ["daybreak", "dawn", "morning", "sunrise"] }
+response = "Endure to first light, dears. At daybreak he must go below — the compact allows him nothing else — and the lychgate will stand open of itself."
+
+[[behaviors.npc.widow-marbury.dialogue]]
+match = { fuzzy = ["fight", "kill", "weapon"] }
+response = "The lesser dead can be put down: flame for the risen flesh, cold iron for the unquiet spirit, the craft's silver for the beasts that never lived. But the Sexton is not a thing you fight. He is a thing you outlast."
+
+[[behaviors.npc.widow-marbury.dialogue]]
+match = { fuzzy = ["key", "crypt", "locked", "door"] }
+response = "The Tyler guards the chapel stair as he guarded the lodge door in life — his key goes below with him, unless someone puts him to rest. And the founder was buried with everything he valued, behind bronze. His wight keeps the bronze key, out among the mausoleums."
+
+# ── Behaviors: scenes ────────────────────────────────────────────────────────
+[behaviors.scene.the-dare]
+canPlay = "!stateGet('played', false)"
+onEnter = '''
+  set state.played = true
+  emit cue("The padlock snaps shut behind you and your friends' laughter fades down the road. The dare is simple: last until daybreak inside Solomon's Rest. Somewhere across the yard, right on cue, a bell you cannot see tolls dusk — and something under the ground hears it too.")
+'''
+
+[behaviors.scene.the-watcher]
+canPlay = "!stateGet('seen', false)"
+onEnter = '''
+  set state.seen = true
+  emit cue('Far down the rows a lantern swings — a tall figure with a spade over one shoulder, standing very still among the stones. It watches all of you, counts you, and does not come closer. Not yet.')
+'''
+
+[behaviors.scene.undercroft-chill]
+canPlay = "!stateGet('seen', false)"
+onEnter = '''
+  set state.seen = true
+  emit cue('The cold down here is older than the chapel above it. Lodge chests line the walls, and the dust on the floor shows no footprints at all — nothing walks here. Nothing has to.')
+'''
+
+[behaviors.scene.founders-reveal]
+canPlay = "!stateGet('seen', false)"
+onEnter = '''
+  set state.seen = true
+  emit cue("Marble, regalia, and the founder's long oak case. On the sarcophagus lid, freshly dusted as if tended nightly, someone keeps a ledger squared to the corner — the Sexton still makes his rounds in here.")
+'''
+
+# ── Behaviors: mechanics ─────────────────────────────────────────────────────
+# The night clock — a Dread-style pressure that operates on the WORLD itself:
+# the hour lives in world-scoped state (worldGet/setWorld), every behavior and
+# the win condition can read it, and the villain's Black Bell can turn it back.
+# Every 3 rounds an hour passes; each passing hour wears 1 Sanity off everyone
+# still standing (the night itself is the tower being pulled). Hour 8 is
+# daybreak.
+[behaviors.mechanic.night-clock]
+init = { ticks = 0 }
+onRoundEnd = '''
+  set state.ticks = stateGet('ticks', 0) + 1
+  emit status(field('Night', lookup(mapLit('0', 'Dusk', '1', '9 PM', '2', '10 PM', '3', '11 PM', '4', 'Midnight', '5', '2 AM', '6', '3 AM', '7', 'False Dawn', '8', 'DAYBREAK'), str(worldGet('hour', 0))), worldGet('hour', 0) >= 6 ? 'warn' : 'normal'))
+  guard stateGet('ticks', 0) >= 3
+  set state.ticks = 0
+  guard worldGet('hour', 0) < 8
+  when worldGet('hour', 0) + 1 >= 8 {
+    emit setWorld('hour', 8)
+    emit setWorld('daybreak', true)
+    emit cue('The east goes gray above the yews. Somewhere below, a spade is shouldered: the compact is spent. Daybreak.')
+  }
+  when worldGet('hour', 0) + 1 < 8 {
+    emit setWorld('hour', worldGet('hour', 0) + 1)
+    emit cue(lookup(mapLit('1', 'The dusk-bell fades. Nine o clock, by the chapel chime, and the last daylight drains out of the sky.', '2', 'Ten o clock. The gravel paths have gone silver and strange, and the rows do not seem to line up the way they did.', '3', 'Eleven. A lantern crosses the yard where no path runs. It pauses whenever one of you stands apart from the others.', '4', 'Midnight. The chime goes on one stroke too long. In the after-ring you hear a spade bite earth, patient as a heartbeat.', '5', 'Two in the morning — the chime skipped one entirely. The Sexton has been seen at the edge of the light, waiting. Never while you stand together. Only ever near whoever is alone.', '6', 'Three. The fog comes up to the knee, and under it the ground feels freshly turned. All of it.', '7', 'False dawn — a lie of gray light. The digging sounds have stopped. That is somehow worse.'), str(worldGet('hour', 0) + 1)))
+    emit adjustStat(party[0], sanity, -1)
+    emit adjustStat(party[1], sanity, -1)
+    emit adjustStat(party[2], sanity, -1)
+    emit adjustStat(party[3], sanity, -1)
+  }
+'''
+
+# The compact: the Sexton cannot be harmed by anything the living carry, and
+# his blows land ONLY on the sundered — a target with no conscious companion in
+# the room takes his full strength; a witnessed target takes nothing. This is
+# never stated outright: the party discovers it through zeroed blows, the
+# hour cues, the widow, and the ledger.
+[behaviors.mechanic.lone-prey]
+init = {}
+modifyDamage = "damage.target == 'mob:The Sexton' ? 0 : damage.source == 'mob:The Sexton' && some(party, element.id != damage.target && element.roomId == damage.room && !includes(element.status, 'ko')) ? 0 : damage.amount"
+
+# The old wards: each supernatural haunt falls only to its bane, wielded in
+# hand — fire for the wight, cold iron for the Tyler, lodge silver for the
+# hounds. Anything else passes through them like cold fog.
+[behaviors.mechanic.grave-wards]
+init = {}
+modifyDamage = "damage.target == 'mob:Wight of the Founder' && !some(party, element.id == damage.source && hasEquipped(element, 'torch')) ? 0 : damage.target == 'mob:The Tyler' && !some(party, element.id == damage.source && (hasEquipped(element, 'fence-spike') || hasEquipped(element, 'fence-spike-2'))) ? 0 : damage.target == 'campaign-mob:spectral hound' && !some(party, element.id == damage.source && hasEquipped(element, 'silver-trowel')) ? 0 : damage.amount"
+
+# ── Behaviors: the Sexton's own cards ────────────────────────────────────────
+[behaviors.card.toll-the-black-bell]
+onPlay = '''
+  emit cue('From the chapel a bell tolls — backward, the strokes swallowing themselves. The stars wheel the wrong way, and the night grows two hours longer.')
+  emit setWorld('hour', worldGet('hour', 0) < 2 ? 0 : worldGet('hour', 0) - 2)
+'''
+
+[behaviors.card.cold-hands]
+onPlay = '''
+  emit cue('The ground softens like a held breath, and cold hands close around every living ankle in the yard. They do not pull. They just hold — and the holding is the worst of it.')
+  emit adjustStat(party[0], sanity, -3)
+  emit adjustStat(party[1], sanity, -3)
+  emit adjustStat(party[2], sanity, -3)
+  emit adjustStat(party[3], sanity, -3)
+'''

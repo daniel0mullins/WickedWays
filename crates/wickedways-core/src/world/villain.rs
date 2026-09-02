@@ -107,13 +107,14 @@ pub trait CardBehavior: Sync {
     ) -> Result<Vec<CardEffect>, ProceduralViolation>;
 }
 
-/// Resolve a first-party card by key. The compiled-in registry: the three
+/// Resolve a first-party card by key. The compiled-in registry: the four
 /// shipped Wicked Ways cards. Product features — NOT conformance-gated.
 pub fn card_behavior(key: &str) -> Option<&'static dyn CardBehavior> {
     match key {
         "wicked:lights-out" => Some(&LIGHTS_OUT),
         "wicked:ruin" => Some(&RUIN),
         "wicked:shadow-step" => Some(&SHADOW_STEP),
+        "wicked:scatter" => Some(&SCATTER),
         _ => None,
     }
 }
@@ -309,6 +310,80 @@ impl CardBehavior for ShadowStepCard {
             }),
             CardEffect::Teleport { target, room },
         ])
+    }
+}
+
+/// `wicked:scatter` — hurl every conscious hero to a random room, splitting
+/// the party. Each hero draws its own destination from `rng` (they can land
+/// together — the cemetery is fickle), teleported through the shared
+/// `relocate` path like Shadow Step. Needs no target.
+struct ScatterCard;
+static SCATTER: ScatterCard = ScatterCard;
+
+/// The heroes Scatter throws: conscious (non-KO) party members other than the
+/// villain itself, in party order.
+fn scatter_victims(w: &World, args: &CardArgs) -> Vec<CharacterId> {
+    w.campaign
+        .party_ids
+        .iter()
+        .filter(|pid| **pid != args.villain && !w.is_ko(pid))
+        .cloned()
+        .collect()
+}
+
+impl CardBehavior for ScatterCard {
+    fn playable(&self, w: &World, _cat: &Catalog, args: &CardArgs) -> bool {
+        // Pointless with nobody to throw or nowhere to throw them.
+        w.rooms.len() >= 2 && !scatter_victims(w, args).is_empty()
+    }
+    fn play(
+        &self,
+        w: &World,
+        _cat: &Catalog,
+        rng: &mut Rng,
+        args: &CardArgs,
+    ) -> Result<Vec<CardEffect>, ProceduralViolation> {
+        let rooms: Vec<RoomId> = w.rooms.keys().cloned().collect();
+        if rooms.len() < 2 {
+            return Err(ProceduralViolation(
+                "Scatter needs at least two rooms.".into(),
+            ));
+        }
+        let victims = scatter_victims(w, args);
+        if victims.is_empty() {
+            return Err(ProceduralViolation(
+                "Scatter finds no conscious hero to throw.".into(),
+            ));
+        }
+        let mut effects = alloc::vec![CardEffect::Std(Effect::Cue {
+            cue: MechanicCue {
+                text: Some(
+                    "The ground lurches; the dark folds around each of you — and when it \
+                     unfolds, you are somewhere else, and alone."
+                        .into(),
+                ),
+                sound: None,
+            },
+        })];
+        for victim in victims {
+            // Draw a destination other than the victim's current room, so each
+            // hero is always MOVED (though two heroes may still land together).
+            let here = w
+                .characters
+                .get(&victim)
+                .and_then(|c| c.current_room_id.clone());
+            let candidates: Vec<&RoomId> =
+                rooms.iter().filter(|r| Some(*r) != here.as_ref()).collect();
+            if candidates.is_empty() {
+                continue;
+            }
+            let idx = (i64::from(roll(candidates.len() as u32, rng.next_f64())) - 1) as usize;
+            effects.push(CardEffect::Teleport {
+                target: victim,
+                room: candidates[idx].clone(),
+            });
+        }
+        Ok(effects)
     }
 }
 

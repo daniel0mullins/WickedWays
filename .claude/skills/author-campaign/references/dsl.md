@@ -37,7 +37,9 @@ Literals: numbers, `true`/`false`, strings in `'…'` or `"…"`.
 - character: `.health` `.sanity` `.energy` `.name` `.id` `.roomId` `.status`
   (list of status keys) `.room` (the room object)
 - room: `.name` `.id` `.lit` `.occupants` (list of characters)
-- `damage`: `.amount` `.target` `.stat` `.source`
+- `damage`: `.amount` `.target` (an id string) `.stat` `.source` (the attacker's
+  id string on the attack path, else null) `.room` (the TARGET's room id — lets a
+  `modifyDamage` reason about co-location via `some(party, element.roomId == damage.room && …)`)
 - `action`: `.kind` `.room`
 
 **Functions** (complete list; ★ = second/first arg must be a string literal):
@@ -49,6 +51,7 @@ Literals: numbers, `true`/`false`, strings in `'…'` or `"…"`.
 | `hasEquipped(who, '<itemKey>')` ★ | has the item equipped |
 | `stateGet('<field>', <literal default>)` ★ | read this behavior's state field |
 | `stateGetIn('<mapField>', <keyExpr>, <literal default>)` ★ | read a string-keyed state map |
+| `worldGet('<field>', <literal default>)` ★ | read the campaign's WORLD-scoped state — readable in every context (victory tests included); written via `emit setWorld(...)` |
 | `some(list, pred)` / `every(list, pred)` | quantifiers; `pred` reads `element` |
 | `includes(list, value)` | list membership |
 | `length(list)` / `first(list)` | list ops |
@@ -87,6 +90,7 @@ pass <expr>                       # exit runScript only: narration on success
 | `grantImmunity(<target>, <turnsExpr>)` | all-status immunity |
 | `giveItem(<fromExpr>, <toExpr>, <itemExpr>)` | hand an item over (ids or subjects) |
 | `setVisible(<targetExpr>, <boolExpr>)` | show/hide a character (e.g. `'npc:The Caretaker'`) |
+| `setWorld('<field>', <valueExpr>)` | write one field of the campaign's world-scoped state (the cross-behavior channel `worldGet` reads — a night clock a victory test can check, a ward a card can break) |
 | `status(field('<label>', <valueExpr>[, <emphasisExpr>]), …)` | HUD status bar readout |
 
 Example (a mechanic that drains sanity in the dark):
@@ -124,12 +128,16 @@ No randomness, no clocks, no loops. Strings from numbers format like JavaScript.
 If a design needs randomness, express it through the engine's own systems
 (encounter chance, formation weights) instead.
 
-## State is scoped PER BEHAVIOR KEY
+## State is scoped PER BEHAVIOR KEY — world state is the one shared channel
 
 `state` / `stateGet` read and write **this behavior's own** state — a scene's
 `set state.lit = true` is invisible to a victory `test`'s `stateGet('lit', …)`.
-Do not couple behaviors through state. Write victory conditions as world
-predicates instead, the way the shipped campaigns do:
+When behaviors genuinely must share a fact (a night clock a victory condition
+reads, a flag a card flips), use the WORLD-scoped state instead: any effect
+body writes it with `emit setWorld('field', <expr>)` and every context —
+victory tests included — reads it with `worldGet('field', <default>)`.
+Otherwise, write victory conditions as world predicates, the way the shipped
+campaigns do:
 
 - reach a place holding a thing: `first(party).room.name == 'Attic' && hasItem(first(party), 'journal')`
 - any character broken: `some(party, element.sanity <= 0)`

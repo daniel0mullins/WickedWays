@@ -23,6 +23,7 @@ pub mod intent;
 pub mod item_behavior;
 mod items_actions;
 pub mod lifecycle;
+mod mapgen;
 pub mod mechanics;
 pub mod mob_actions;
 mod movement;

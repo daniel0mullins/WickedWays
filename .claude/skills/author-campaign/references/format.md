@@ -42,6 +42,32 @@ Single tables: `[villain]`, the `[behaviors.*]` trees.
 | `lights` | array of item keys | no — items that light this room when carried lit |
 | `image` | string | no — relative art path (e.g. `rooms/foyer.webp`), served from the deploy's asset root; no `..`, no leading `/`, never inline data |
 
+## `[mapGen]` — procedural map generation (optional)
+
+When present, the campaign authors **no `[[exits]]`** (mixing them is a compile
+error): the engine wires the declared rooms at `begin_campaign` via a randomized
+spanning tree drawn from the seeded rng — every room reachable, bidirectional
+exits, no self-connections, a different layout each playthrough seed.
+
+| Key | Type | Required |
+|---|---|---|
+| `extraConnections` | number | no — loop edges beyond the spanning tree: an absolute count, or a fraction of `n - 1` when strictly between 0 and 1 |
+| `required` | array of tables (`[[mapGen.required]]`) | no — room pairs pinned as neighbors in every layout |
+| `maxExitsPerRoom` | int | no — per-room exit cap, clamped to 2..8 (default 8) |
+| `sealed` | array of room names | no — rooms reachable ONLY through `required` passages (a locked crypt's keyed door stays its sole entrance); every sealed room must appear in a `required` entry |
+
+A `[[mapGen.required]]` entry (the place for keyed doors in a generated map):
+
+| Key | Type | Required |
+|---|---|---|
+| `from` | string | yes — a room `name` |
+| `to` | string | yes — a room `name` |
+| `behavior` | string | no — a `[behaviors.exit.<key>]` key |
+| `name` | string | no — display name ("mausoleum gate") |
+| `initialState` | inline table | no — seed state, e.g. `{ unlocked = false }` |
+
+The generator assigns compass directions; a required entry carries none.
+
 ## `[[exits]]` — one-directional; write the return leg yourself
 
 | Key | Type | Required |

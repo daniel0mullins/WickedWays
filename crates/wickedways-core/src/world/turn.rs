@@ -35,6 +35,12 @@ impl World {
         cues: &mut Vec<PresentationCue>,
     ) -> Result<(), ProceduralViolation> {
         self.campaign.started = true;
+        // Procedural map generation FIRST (before any scene can fire and
+        // before the villain's shuffle), so the whole night plays on the
+        // freshly wired graph. A no-op (zero rng draws) without a
+        // `campaign.map_gen` config, so existing campaigns keep their pinned
+        // rng streams.
+        self.generate_map()?;
         // Villain setup BEFORE the round-0 dispatch: shuffle the authored deck
         // and deal the opening hand. A no-op (zero rng draws) without a
         // villain, so villain-less campaigns keep their pinned rng streams.

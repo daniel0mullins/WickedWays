@@ -253,6 +253,13 @@ pub fn eval_expr(e: &Expr, cx: &mut Ctx<'_>) -> Ev {
                 _ => Ev::Val(default.clone()),
             }
         }
+        Expr::WorldGet { field, default } => {
+            let read = cx.view.and_then(|v| v.world_state.get(field)).cloned();
+            match read {
+                Some(j) if !j.is_null() => Ev::Val(json_to_value(&j)),
+                _ => Ev::Val(default.clone()),
+            }
+        }
         Expr::Lookup { map, key } => {
             let k = coerce_str(&eval_expr(key, cx).into_value());
             match map.as_ref() {
@@ -448,6 +455,10 @@ fn build_effect(t: &EffectTemplate, cx: &mut Ctx<'_>) -> Option<Effect> {
             target: as_character_id(eval_expr(target, cx))?,
             visible: eval_expr(visible, cx).truthy(),
         }),
+        EffectTemplate::SetWorldState { field, value } => Some(Effect::SetWorldState {
+            field: field.clone(),
+            value: value_to_json(&eval_expr(value, cx).into_value()),
+        }),
     }
 }
 
@@ -586,6 +597,10 @@ fn get_field(subject: Ev, field: &str, cx: &mut Ctx<'_>) -> Ev {
             "stat" => Ev::Val(Value::Str(d.stat.as_str().into())),
             "source" => match &d.source {
                 Some(s) => Ev::Val(Value::Str(s.0.clone())),
+                None => Ev::Val(Value::Null),
+            },
+            "room" => match &d.room {
+                Some(r) => Ev::Val(Value::Str(r.clone())),
                 None => Ev::Val(Value::Null),
             },
             _ => Ev::Val(Value::Null),
@@ -906,6 +921,7 @@ mod tests {
             target: cid("pc"),
             stat: crate::stats::StatType::Health,
             source: None,
+            room: None,
         };
         // the conformance-dread cap shape: amount > 3 ? Final(3): Value(amount)
         let body = DamageBody::IfElse {

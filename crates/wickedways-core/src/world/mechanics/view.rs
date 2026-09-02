@@ -19,6 +19,9 @@ pub struct CampaignView {
     pub party: Vec<CharacterView>,
     /// Always empty in v1 (`#campaignView` returns `rooms: []`).
     pub rooms: Vec<RoomView>,
+    /// The campaign's world-scoped script state (`campaign.world_state`),
+    /// readable from every DSL context via `worldGet(...)`. `Null` = empty.
+    pub world_state: serde_json::Value,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -63,13 +66,18 @@ pub struct RoomView {
     pub occupants: Vec<CharacterView>,
 }
 
-/// `DamageView` — `source` is always `None` at the one call site.
+/// `DamageView` — the in-flight damage a `modify_damage` transform observes.
+/// `source` is the attacking character (populated on the attack path, absent
+/// for source-less damage such as a critical-miss stumble); `room` is the
+/// TARGET's current room id, so a transform can reason about co-location
+/// (`some(party, element.roomId == damage.room && …)`) without a room resolver.
 #[derive(Clone, Debug, PartialEq)]
 pub struct DamageView {
     pub amount: f64,
     pub target: CharacterId,
     pub stat: StatType,
     pub source: Option<CharacterId>,
+    pub room: Option<String>,
 }
 
 impl World {
@@ -89,6 +97,7 @@ impl World {
             max_rounds: self.campaign.max_rounds,
             party,
             rooms: Vec::new(),
+            world_state: self.campaign.world_state.clone(),
         }
     }
 

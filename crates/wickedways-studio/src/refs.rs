@@ -305,7 +305,14 @@ pub fn check_refs(doc: &EditorDoc) -> Vec<StudioProblem> {
     }
 
     // ---- reachability: rooms the party can never walk to (info) ----
-    if let Some(start) = doc.start_room.as_deref().filter(|s| rooms.contains(s)) {
+    // Suppressed for a [mapGen] campaign: the engine wires the whole graph at
+    // begin_campaign (spanning tree — every room reachable by construction).
+    if let Some(start) = doc
+        .start_room
+        .as_deref()
+        .filter(|s| rooms.contains(s))
+        .filter(|_| doc.map_gen.is_none())
+    {
         let mut reachable: BTreeSet<&str> = BTreeSet::new();
         reachable.insert(start);
         let mut frontier = vec![start];

@@ -69,6 +69,14 @@ pub enum Effect {
         target: CharacterId,
         visible: bool,
     },
+    /// Write one field of `campaign.world_state` — the world-scoped script
+    /// state every DSL context can read back via `worldGet(...)`. The one
+    /// sanctioned cross-behavior state channel (a night clock a victory test
+    /// reads, a ward a card breaks). Not character-targeted.
+    SetWorldState {
+        field: String,
+        value: Value,
+    },
 }
 
 /// Result of `modify_damage` (`number | { value; final: true }`).
