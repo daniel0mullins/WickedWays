@@ -1710,9 +1710,12 @@ deltas, checkpoints, and the golden corpus never carry image bytes, and an image
 catalog serializes byte-identically (the `images` map is omitted when empty). The `ViewModel`
 projects the associations (`ThinRoom.image`, occupant/card `ScopeEntity.image`, items via the
 existing resolved-presentation path); the files themselves live in `campaigns/assets/` and are
-served by the room server's `/assets` route (`ASSETS_DIR`, wired in the Docker image). The PnC
-surface renders them — room art as the scene backdrop, entity art replacing the abstract
-hotspot markers; `asset_url` (`wickedways-web/src/affordances.rs`) owns path→URL resolution.
+served by the room server's `/assets` route (`ASSETS_DIR`, wired in the Docker image). Both play
+surfaces render them: the PnC scene shows room art as its backdrop and entity art in place of
+the abstract hotspot markers; the CRT terminal frames room art above the room description
+(hidden while the room is dark) and shows a clicked noun's portrait as a dismissible inset
+between the room panel and the transcript. `asset_url`
+(`wickedways-web/src/affordances.rs`) owns path→URL resolution for both.
 The `g2-images` gate fixture pins the lowering.
 (no Hollow House usage, so a bespoke oracle would be needed): `endedNarration`, `chat`, `av`, `caches`,
 standalone `materials`/`recipes`, room `lights`, item `presentation`, and the mob override fields beyond
