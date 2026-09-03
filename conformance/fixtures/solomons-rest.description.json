@@ -1,0 +1,481 @@
+{
+  "archetypes": [
+    {
+      "baseStats": {
+        "energy": 9.0,
+        "health": 9.0,
+        "sanity": 13.0
+      },
+      "id": "quiet-one",
+      "immunities": [
+        "panic"
+      ],
+      "name": "The Quiet One"
+    },
+    {
+      "baseStats": {
+        "energy": 8.0,
+        "health": 8.0,
+        "sanity": 14.0
+      },
+      "id": "valedictorian",
+      "immunities": [
+        "confused"
+      ],
+      "inventorySlots": 1,
+      "name": "The Valedictorian"
+    },
+    {
+      "baseStats": {
+        "energy": 12.0,
+        "health": 14.0,
+        "sanity": 7.0
+      },
+      "id": "quarterback",
+      "inventorySlots": 2,
+      "name": "The Quarterback"
+    },
+    {
+      "baseStats": {
+        "energy": 14.0,
+        "health": 9.0,
+        "sanity": 8.0
+      },
+      "id": "cheer-captain",
+      "immunities": [
+        "fear"
+      ],
+      "name": "The Cheer Captain"
+    }
+  ],
+  "caches": [
+    {
+      "materials": {
+        "cloth": 2,
+        "wood": 2
+      },
+      "name": "kindling-pile",
+      "room": "Toolshed"
+    },
+    {
+      "materials": {
+        "cloth": 1,
+        "wood": 2
+      },
+      "name": "deadfall-branches",
+      "room": "Bone Hollow"
+    },
+    {
+      "materials": {
+        "cloth": 2
+      },
+      "name": "shroud-scraps",
+      "room": "Ossuary"
+    }
+  ],
+  "exits": [],
+  "formations": [
+    {
+      "key": "rat-swarm",
+      "weight": 4
+    },
+    {
+      "key": "stray-raccoon",
+      "weight": 3
+    },
+    {
+      "key": "carrion-crows",
+      "weight": 3
+    },
+    {
+      "key": "spectral-hound",
+      "weight": 2
+    }
+  ],
+  "loot": [
+    {
+      "description": "Somebody's backpack, dropped at the gate. Whoever dared whoever, they left in a hurry.",
+      "items": [
+        "soda",
+        "bandages"
+      ],
+      "name": "abandoned-backpack",
+      "room": "Lychgate"
+    },
+    {
+      "description": "A rack of grave-tender's tools.",
+      "items": [
+        "shovel",
+        "lantern"
+      ],
+      "name": "tool-rack",
+      "room": "Toolshed"
+    },
+    {
+      "description": "A shelf of candles and one long processional torch, pitch-headed and ready.",
+      "items": [
+        "torch",
+        "hymnal"
+      ],
+      "name": "votive-shelf",
+      "room": "Chapel of the Compasses"
+    },
+    {
+      "description": "The sagging plot fence. One decorative spike lifts free with a squeal.",
+      "items": [
+        "fence-spike"
+      ],
+      "name": "iron-fence",
+      "room": "Old Yard"
+    },
+    {
+      "description": "A toppled wooden grave marker, weathered to a club's heft.",
+      "items": [
+        "grave-marker"
+      ],
+      "name": "fallen-marker",
+      "room": "Potters Field"
+    },
+    {
+      "description": "A rusted side-gate wedged into the yews, its finial spike loose.",
+      "items": [
+        "fence-spike-2"
+      ],
+      "name": "yew-gate",
+      "room": "Yew Alley"
+    },
+    {
+      "description": "A niche whose brass door hangs open. Inside, wrapped in velvet, lies a ceremonial trowel — lodge silver, cold as a promise.",
+      "items": [
+        "silver-trowel"
+      ],
+      "name": "open-niche",
+      "room": "Columbarium"
+    },
+    {
+      "description": "The stained workbench. Beneath it, wrapped in oilcloth and shoved deep against the wall, something with an edge.",
+      "items": [
+        "hunting-knife"
+      ],
+      "name": "lime-bench",
+      "room": "Charnel House"
+    },
+    {
+      "description": "A little tin reliquary tucked between femurs.",
+      "items": [
+        "smelling-salts"
+      ],
+      "name": "sunken-reliquary",
+      "room": "Ossuary"
+    },
+    {
+      "description": "A stone bowl at the circle's center, where someone still leaves offerings.",
+      "items": [
+        "whiskey-flask"
+      ],
+      "name": "offering-bowl",
+      "room": "Obelisk Circle"
+    },
+    {
+      "description": "A rusted lockbox lying in the shallows, lid sprung.",
+      "items": [
+        "cough-drops"
+      ],
+      "name": "drowned-lockbox",
+      "room": "Reflecting Pool"
+    },
+    {
+      "description": "A lodge storage chest, banded in iron. The masons kept their working tools sharp.",
+      "items": [
+        "machete",
+        "first-aid-kit"
+      ],
+      "name": "undercroft-cache",
+      "room": "Undercroft"
+    },
+    {
+      "description": "The long oak case, velvet-lined: the founder was buried with his sidearm — and with a ledger he perhaps meant no one to read.",
+      "items": [
+        "revolver",
+        "sextons-ledger"
+      ],
+      "name": "founders-gun-case",
+      "room": "Founders Mausoleum"
+    }
+  ],
+  "loseConditions": [
+    {
+      "key": "the-flock-is-taken",
+      "narration": {
+        "text": "The last of you goes down, and the yard falls quiet. Unhurried footsteps. The scrape of a spade. The Sexton works until the sky pales, and by morning Solomon's Rest has four new mounds, unmarked, dug together — because even now, he keeps you together."
+      }
+    }
+  ],
+  "mapGen": {
+    "extraConnections": 0.3,
+    "maxExitsPerRoom": 5,
+    "required": [
+      {
+        "from": "Lychgate",
+        "to": "Gravel Path"
+      },
+      {
+        "behaviorKey": "undercroft-door",
+        "from": "Chapel of the Compasses",
+        "initialState": {
+          "unlocked": false
+        },
+        "name": "undercroft stair-door",
+        "to": "Undercroft"
+      },
+      {
+        "behaviorKey": "founders-door",
+        "from": "Mausoleum Row",
+        "initialState": {
+          "unlocked": false
+        },
+        "name": "founders bronze door",
+        "to": "Founders Mausoleum"
+      }
+    ],
+    "sealed": [
+      "Undercroft",
+      "Founders Mausoleum"
+    ]
+  },
+  "materials": [],
+  "mechanics": [
+    {
+      "key": "night-clock"
+    },
+    {
+      "key": "lone-prey"
+    },
+    {
+      "key": "grave-wards"
+    }
+  ],
+  "mobs": [
+    {
+      "actionsPerRound": 2,
+      "baseEscapeChance": 80,
+      "name": "The Sexton",
+      "naturalAttack": {
+        "power": 10,
+        "stat": "health"
+      },
+      "room": "Caretakers Lodge",
+      "stats": {
+        "energy": 12.0,
+        "health": 20.0,
+        "sanity": 12.0
+      }
+    },
+    {
+      "drops": [
+        "founder-key"
+      ],
+      "lightAverse": true,
+      "name": "Wight of the Founder",
+      "naturalAttack": {
+        "power": 4,
+        "stat": "health"
+      },
+      "room": "Mausoleum Row",
+      "stats": {
+        "energy": 4.0,
+        "health": 8.0,
+        "sanity": 6.0
+      }
+    },
+    {
+      "drops": [
+        "undercroft-key"
+      ],
+      "name": "The Tyler",
+      "naturalAttack": {
+        "power": 3,
+        "stat": "sanity"
+      },
+      "room": "Chapel of the Compasses",
+      "stats": {
+        "energy": 6.0,
+        "health": 6.0,
+        "sanity": 5.0
+      }
+    },
+    {
+      "baseEscapeChance": 70,
+      "name": "Raccoon",
+      "naturalAttack": {
+        "power": 1,
+        "stat": "health"
+      },
+      "room": "Potters Field",
+      "stats": {
+        "energy": 5.0,
+        "health": 3.0,
+        "sanity": 3.0
+      }
+    }
+  ],
+  "npcs": [
+    {
+      "behavior": "widow-marbury",
+      "name": "Widow Marbury",
+      "room": "Widows Willow",
+      "stats": {
+        "energy": 1.0,
+        "health": 1.0,
+        "sanity": 1.0
+      }
+    }
+  ],
+  "opts": {
+    "baseEncounterChance": 25,
+    "maxRounds": 60
+  },
+  "recipes": [
+    "field-torch",
+    "torn-bandage"
+  ],
+  "rooms": [
+    {
+      "description": "The roofed gate of Solomon's Rest. The iron scrollwork spells a square and compasses, and the padlock your friends clicked shut behind you is still warm.",
+      "name": "Lychgate",
+      "spawnModifier": 0
+    },
+    {
+      "description": "A ribbon of white gravel between leaning rows of slate. Your footsteps sound much louder than they should.",
+      "name": "Gravel Path"
+    },
+    {
+      "description": "A one-room stone lodge, door ajar. A kettle sits on a cold stove, and a coat hangs by the door as if its owner means to return.",
+      "name": "Caretakers Lodge",
+      "spawnModifier": 0
+    },
+    {
+      "description": "A lean-to of tar-papered boards. Rakes, twine, and grave-digging tools hang in orderly silhouettes.",
+      "name": "Toolshed",
+      "spawnModifier": 0
+    },
+    {
+      "description": "A small lodge chapel. Votive candles gutter beneath a wall of mason's marks, and a figure in an old-fashioned coat stands guard at the inner door — through you, the candlelight passes him entirely.",
+      "name": "Chapel of the Compasses"
+    },
+    {
+      "dark": true,
+      "description": "A vaulted cellar beneath the chapel, black and bone-dry. Whatever the lodge kept down here, they kept it locked.",
+      "name": "Undercroft",
+      "spawnModifier": 0
+    },
+    {
+      "description": "The oldest graves, their inscriptions worn to braille. A wrought-iron fence sags around a family plot, spikes loose in their sockets.",
+      "name": "Old Yard"
+    },
+    {
+      "description": "Unmarked mounds under thistle. Something small and masked rummages in the leaf litter.",
+      "name": "Potters Field",
+      "spawnModifier": 2
+    },
+    {
+      "description": "A great willow weeps over a single white stone. A woman in mourning gray stands beneath it — she has been standing there a very long time.",
+      "name": "Widows Willow",
+      "spawnModifier": 0
+    },
+    {
+      "description": "A street of little stone houses for the dead. One bronze door at the row's end is newer than the rest, and something inside one of the crypts is breathing.",
+      "name": "Mausoleum Row"
+    },
+    {
+      "dark": true,
+      "description": "The founder's vault. A marble sarcophagus, a wall of lodge regalia — and a long oak case with brass hinges, the kind made for things that fire.",
+      "name": "Founders Mausoleum",
+      "spawnModifier": 0
+    },
+    {
+      "description": "Walls of little brass-doored niches, urn after urn. A few doors hang open, ash spilled like spent hourglasses.",
+      "name": "Columbarium"
+    },
+    {
+      "dark": true,
+      "description": "A half-sunken vault stacked with folded bones. The femurs are sorted by length. Someone was very patient.",
+      "name": "Ossuary"
+    },
+    {
+      "dark": true,
+      "description": "A windowless outbuilding that smells of quicklime and old earth. The workbench is stained in ways a workbench should not be.",
+      "name": "Charnel House"
+    },
+    {
+      "description": "Nine granite obelisks in a ring, each carved with an all-seeing eye. Standing in the center, you are certain all nine are looking at you.",
+      "name": "Obelisk Circle"
+    },
+    {
+      "description": "A corridor of black yews clipped into walls. The dark between their trunks is total, and now and then it shifts.",
+      "name": "Yew Alley"
+    },
+    {
+      "description": "A long, still pool skinned with leaves. The reflections in it are a half-second behind, and one of them is not yours.",
+      "name": "Reflecting Pool"
+    },
+    {
+      "dark": true,
+      "description": "A sunken dell where the ground has settled over something. Fog pools here knee-deep, and the grass grows in rib-shaped rows.",
+      "name": "Bone Hollow",
+      "spawnModifier": 2
+    }
+  ],
+  "scenes": [
+    {
+      "key": "the-dare",
+      "phase": "enter",
+      "room": "Lychgate"
+    },
+    {
+      "key": "the-watcher",
+      "phase": "enter",
+      "room": "Gravel Path"
+    },
+    {
+      "key": "undercroft-chill",
+      "phase": "enter",
+      "room": "Undercroft"
+    },
+    {
+      "key": "founders-reveal",
+      "phase": "enter",
+      "room": "Founders Mausoleum"
+    }
+  ],
+  "startRoom": "Lychgate",
+  "timeoutNarration": {
+    "text": "The bell tolls an hour no clock owns. You count them: thirteen. Dawn is not coming — not for you, not ever — and somewhere among the stones the Sexton begins, unhurried, to dig four new graves."
+  },
+  "title": "The Dare at Solomon's Rest",
+  "villain": {
+    "character": "The Sexton",
+    "deck": [
+      "wicked:shadow-step",
+      "wicked:shadow-step",
+      "wicked:shadow-step",
+      "wicked:scatter",
+      "wicked:scatter",
+      "wicked:lights-out",
+      "wicked:lights-out",
+      "wicked:ruin",
+      "toll-the-black-bell",
+      "toll-the-black-bell",
+      "cold-hands",
+      "cold-hands"
+    ]
+  },
+  "winConditions": [
+    {
+      "key": "survived-to-daybreak",
+      "narration": {
+        "text": "Gray light crests the yews, and the birdsong is suddenly, absurdly ordinary. Down the rows a lantern gutters out, a spade is shouldered, and the Sexton goes below without a backward glance. The lychgate stands open. Whoever is still on their feet walks out of Solomon's Rest — and nobody ever takes the dare again."
+      }
+    }
+  ]
+}

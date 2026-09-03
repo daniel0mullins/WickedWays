@@ -1,0 +1,1154 @@
+{
+  "campaign": {
+    "actedThisRound": [],
+    "actionSounds": {},
+    "activeCharacterIndex": 0,
+    "archetypes": [
+      {
+        "baseStats": {
+          "energy": 9.0,
+          "health": 9.0,
+          "sanity": 13.0
+        },
+        "id": "quiet-one",
+        "immunities": [
+          "panic"
+        ],
+        "name": "The Quiet One"
+      },
+      {
+        "baseStats": {
+          "energy": 8.0,
+          "health": 8.0,
+          "sanity": 14.0
+        },
+        "id": "valedictorian",
+        "immunities": [
+          "confused"
+        ],
+        "inventorySlots": 1,
+        "name": "The Valedictorian"
+      },
+      {
+        "baseStats": {
+          "energy": 12.0,
+          "health": 14.0,
+          "sanity": 7.0
+        },
+        "id": "quarterback",
+        "inventorySlots": 2,
+        "name": "The Quarterback"
+      },
+      {
+        "baseStats": {
+          "energy": 14.0,
+          "health": 9.0,
+          "sanity": 8.0
+        },
+        "id": "cheer-captain",
+        "immunities": [
+          "fear"
+        ],
+        "name": "The Cheer Captain"
+      }
+    ],
+    "avPolicy": {
+      "enabled": true,
+      "maxParticipants": 6,
+      "video": true
+    },
+    "chatPolicy": {
+      "backfillWindow": 200,
+      "edit": true,
+      "enabled": true,
+      "reactions": true,
+      "readReceipts": true,
+      "typing": true,
+      "whisper": true
+    },
+    "claims": [],
+    "encounterTable": {
+      "baseChance": 25,
+      "formations": [
+        {
+          "behaviorKey": "rat-swarm",
+          "weight": 4
+        },
+        {
+          "behaviorKey": "stray-raccoon",
+          "weight": 3
+        },
+        {
+          "behaviorKey": "carrion-crows",
+          "weight": 3
+        },
+        {
+          "behaviorKey": "spectral-hound",
+          "weight": 2
+        }
+      ],
+      "visited": [
+        "room:Lychgate"
+      ]
+    },
+    "encountered": [],
+    "gmId": "player:Alex",
+    "id": "campaign:The Dare at Solomon's Rest",
+    "knownRecipes": [
+      "field-torch",
+      "torn-bandage"
+    ],
+    "loseConditions": [
+      {
+        "key": "the-flock-is-taken",
+        "narration": {
+          "text": "The last of you goes down, and the yard falls quiet. Unhurried footsteps. The scrape of a spade. The Sexton works until the sky pales, and by morning Solomon's Rest has four new mounds, unmarked, dug together — because even now, he keeps you together."
+        }
+      }
+    ],
+    "mapGen": {
+      "extraConnections": 0.3,
+      "maxExitsPerRoom": 5,
+      "required": [
+        {
+          "from": "room:Lychgate",
+          "to": "room:Gravel Path"
+        },
+        {
+          "behaviorKey": "undercroft-door",
+          "from": "room:Chapel of the Compasses",
+          "name": "undercroft stair-door",
+          "state": {
+            "unlocked": false
+          },
+          "to": "room:Undercroft"
+        },
+        {
+          "behaviorKey": "founders-door",
+          "from": "room:Mausoleum Row",
+          "name": "founders bronze door",
+          "state": {
+            "unlocked": false
+          },
+          "to": "room:Founders Mausoleum"
+        }
+      ],
+      "sealed": [
+        "room:Undercroft",
+        "room:Founders Mausoleum"
+      ]
+    },
+    "materials": {},
+    "maxRounds": 60,
+    "mechanics": [
+      {
+        "key": "night-clock",
+        "state": {
+          "ticks": 0
+        }
+      },
+      {
+        "key": "lone-prey",
+        "state": {}
+      },
+      {
+        "key": "grave-wards",
+        "state": {}
+      }
+    ],
+    "outcome": "ongoing",
+    "partyIds": [
+      "player:Alex",
+      "player:Priya",
+      "player:Brock",
+      "player:Tiffany"
+    ],
+    "round": 0,
+    "started": false,
+    "timeoutNarration": {
+      "text": "The bell tolls an hour no clock owns. You count them: thirteen. Dawn is not coming — not for you, not ever — and somewhere among the stones the Sexton begins, unhurried, to dig four new graves."
+    },
+    "title": "The Dare at Solomon's Rest",
+    "villain": {
+      "characterId": "mob:The Sexton",
+      "deck": [
+        "wicked:shadow-step",
+        "wicked:shadow-step",
+        "wicked:shadow-step",
+        "wicked:scatter",
+        "wicked:scatter",
+        "wicked:lights-out",
+        "wicked:lights-out",
+        "wicked:ruin",
+        "toll-the-black-bell",
+        "toll-the-black-bell",
+        "cold-hands",
+        "cold-hands"
+      ],
+      "discard": [],
+      "hand": []
+    },
+    "winConditions": [
+      {
+        "key": "survived-to-daybreak",
+        "narration": {
+          "text": "Gray light crests the yews, and the birdsong is suddenly, absurdly ordinary. Down the rows a lantern gutters out, a spade is shouldered, and the Sexton goes below without a backward glance. The lychgate stands open. Whoever is still on their feet walks out of Solomon's Rest — and nobody ever takes the dare again."
+        }
+      }
+    ]
+  },
+  "characters": [
+    {
+      "actionsPerRound": 3,
+      "actionsThisRound": 1,
+      "afflictions": {
+        "active": {},
+        "immunity": {},
+        "shakenOff": [],
+        "turnsActive": {}
+      },
+      "archetypeId": "quiet-one",
+      "archetypeImmunities": [
+        "panic"
+      ],
+      "currentRoomId": "room:Lychgate",
+      "equipment": {},
+      "history": [
+        {
+          "kind": "move",
+          "room": {
+            "id": "room:Lychgate",
+            "name": "Lychgate"
+          },
+          "round": 0
+        }
+      ],
+      "id": "player:Alex",
+      "inventory": {
+        "itemIds": [],
+        "keyIds": [],
+        "slots": 5
+      },
+      "kind": "player",
+      "name": "Alex",
+      "stats": {
+        "energy": 9.0,
+        "health": 9.0,
+        "sanity": 13.0
+      }
+    },
+    {
+      "actionsPerRound": 3,
+      "actionsThisRound": 1,
+      "afflictions": {
+        "active": {},
+        "immunity": {},
+        "shakenOff": [],
+        "turnsActive": {}
+      },
+      "archetypeId": "valedictorian",
+      "archetypeImmunities": [
+        "confused"
+      ],
+      "currentRoomId": "room:Lychgate",
+      "equipment": {},
+      "history": [
+        {
+          "kind": "move",
+          "room": {
+            "id": "room:Lychgate",
+            "name": "Lychgate"
+          },
+          "round": 0
+        }
+      ],
+      "id": "player:Priya",
+      "inventory": {
+        "itemIds": [],
+        "keyIds": [],
+        "slots": 6
+      },
+      "kind": "player",
+      "name": "Priya",
+      "stats": {
+        "energy": 8.0,
+        "health": 8.0,
+        "sanity": 14.0
+      }
+    },
+    {
+      "actionsPerRound": 3,
+      "actionsThisRound": 1,
+      "afflictions": {
+        "active": {},
+        "immunity": {},
+        "shakenOff": [],
+        "turnsActive": {}
+      },
+      "archetypeId": "quarterback",
+      "archetypeImmunities": [],
+      "currentRoomId": "room:Lychgate",
+      "equipment": {},
+      "history": [
+        {
+          "kind": "move",
+          "room": {
+            "id": "room:Lychgate",
+            "name": "Lychgate"
+          },
+          "round": 0
+        }
+      ],
+      "id": "player:Brock",
+      "inventory": {
+        "itemIds": [],
+        "keyIds": [],
+        "slots": 7
+      },
+      "kind": "player",
+      "name": "Brock",
+      "stats": {
+        "energy": 12.0,
+        "health": 14.0,
+        "sanity": 7.0
+      }
+    },
+    {
+      "actionsPerRound": 3,
+      "actionsThisRound": 1,
+      "afflictions": {
+        "active": {},
+        "immunity": {},
+        "shakenOff": [],
+        "turnsActive": {}
+      },
+      "archetypeId": "cheer-captain",
+      "archetypeImmunities": [
+        "fear"
+      ],
+      "currentRoomId": "room:Lychgate",
+      "equipment": {},
+      "history": [
+        {
+          "kind": "move",
+          "room": {
+            "id": "room:Lychgate",
+            "name": "Lychgate"
+          },
+          "round": 0
+        }
+      ],
+      "id": "player:Tiffany",
+      "inventory": {
+        "itemIds": [],
+        "keyIds": [],
+        "slots": 5
+      },
+      "kind": "player",
+      "name": "Tiffany",
+      "stats": {
+        "energy": 14.0,
+        "health": 9.0,
+        "sanity": 8.0
+      }
+    },
+    {
+      "actionsPerRound": 2,
+      "actionsThisRound": 0,
+      "afflictions": {
+        "active": {},
+        "immunity": {},
+        "shakenOff": [],
+        "turnsActive": {}
+      },
+      "archetypeImmunities": [],
+      "baseEscapeChance": 80,
+      "currentRoomId": "room:Caretakers Lodge",
+      "equipment": {},
+      "history": [],
+      "id": "mob:The Sexton",
+      "inventory": {
+        "itemIds": [],
+        "keyIds": [],
+        "slots": 2
+      },
+      "kind": "mob",
+      "lightAverse": false,
+      "materialDrops": {},
+      "name": "The Sexton",
+      "naturalAttack": {
+        "power": 10,
+        "stat": "health"
+      },
+      "origin": "room",
+      "stats": {
+        "energy": 12.0,
+        "health": 20.0,
+        "sanity": 12.0
+      }
+    },
+    {
+      "actionsPerRound": 2,
+      "actionsThisRound": 0,
+      "afflictions": {
+        "active": {},
+        "immunity": {},
+        "shakenOff": [],
+        "turnsActive": {}
+      },
+      "archetypeImmunities": [],
+      "baseEscapeChance": 50,
+      "currentRoomId": "room:Chapel of the Compasses",
+      "equipment": {},
+      "history": [],
+      "id": "mob:The Tyler",
+      "inventory": {
+        "itemIds": [],
+        "keyIds": [
+          "mob:The Tyler:drop#0"
+        ],
+        "slots": 2
+      },
+      "kind": "mob",
+      "lightAverse": false,
+      "materialDrops": {},
+      "name": "The Tyler",
+      "naturalAttack": {
+        "power": 3,
+        "stat": "sanity"
+      },
+      "origin": "room",
+      "stats": {
+        "energy": 6.0,
+        "health": 6.0,
+        "sanity": 5.0
+      }
+    },
+    {
+      "actionsPerRound": 2,
+      "actionsThisRound": 0,
+      "afflictions": {
+        "active": {},
+        "immunity": {},
+        "shakenOff": [],
+        "turnsActive": {}
+      },
+      "archetypeImmunities": [],
+      "baseEscapeChance": 70,
+      "currentRoomId": "room:Potters Field",
+      "equipment": {},
+      "history": [],
+      "id": "mob:Raccoon",
+      "inventory": {
+        "itemIds": [],
+        "keyIds": [],
+        "slots": 2
+      },
+      "kind": "mob",
+      "lightAverse": false,
+      "materialDrops": {},
+      "name": "Raccoon",
+      "naturalAttack": {
+        "power": 1,
+        "stat": "health"
+      },
+      "origin": "room",
+      "stats": {
+        "energy": 5.0,
+        "health": 3.0,
+        "sanity": 3.0
+      }
+    },
+    {
+      "actionsPerRound": 3,
+      "actionsThisRound": 0,
+      "afflictions": {
+        "active": {},
+        "immunity": {},
+        "shakenOff": [],
+        "turnsActive": {}
+      },
+      "archetypeImmunities": [],
+      "currentRoomId": "room:Widows Willow",
+      "equipment": {},
+      "history": [],
+      "id": "npc:Widow Marbury",
+      "inventory": {
+        "itemIds": [],
+        "keyIds": [],
+        "slots": 5
+      },
+      "kind": "npc",
+      "name": "Widow Marbury",
+      "npcBehaviorKey": "widow-marbury",
+      "stats": {
+        "energy": 1.0,
+        "health": 1.0,
+        "sanity": 1.0
+      }
+    },
+    {
+      "actionsPerRound": 2,
+      "actionsThisRound": 0,
+      "afflictions": {
+        "active": {},
+        "immunity": {},
+        "shakenOff": [],
+        "turnsActive": {}
+      },
+      "archetypeImmunities": [],
+      "baseEscapeChance": 50,
+      "currentRoomId": "room:Mausoleum Row",
+      "equipment": {},
+      "history": [],
+      "id": "mob:Wight of the Founder",
+      "inventory": {
+        "itemIds": [],
+        "keyIds": [
+          "mob:Wight of the Founder:drop#0"
+        ],
+        "slots": 2
+      },
+      "kind": "mob",
+      "lightAverse": true,
+      "materialDrops": {},
+      "name": "Wight of the Founder",
+      "naturalAttack": {
+        "power": 4,
+        "stat": "health"
+      },
+      "origin": "room",
+      "stats": {
+        "energy": 4.0,
+        "health": 8.0,
+        "sanity": 6.0
+      }
+    }
+  ],
+  "codex": [
+    {
+      "firstSeen": {
+        "round": 0
+      },
+      "key": "field-torch",
+      "kind": "recipe",
+      "snapshot": {
+        "id": "field-torch",
+        "materials": {
+          "cloth": 1,
+          "wood": 1
+        },
+        "outputName": "Grave Torch"
+      }
+    },
+    {
+      "firstSeen": {
+        "round": 0
+      },
+      "key": "torn-bandage",
+      "kind": "recipe",
+      "snapshot": {
+        "id": "torn-bandage",
+        "materials": {
+          "cloth": 2
+        },
+        "outputName": "Torn Bandage"
+      }
+    },
+    {
+      "firstSeen": {
+        "characterId": "player:Alex",
+        "roomId": "room:Lychgate",
+        "round": 0
+      },
+      "key": "room:Lychgate",
+      "kind": "room",
+      "snapshot": {
+        "description": "The roofed gate of Solomon's Rest. The iron scrollwork spells a square and compasses, and the padlock your friends clicked shut behind you is still warm.",
+        "name": "Lychgate"
+      }
+    }
+  ],
+  "exits": [],
+  "items": [
+    {
+      "behaviorKey": "soda",
+      "id": "loot:abandoned-backpack:item#0",
+      "kind": "item",
+      "modifier": 4
+    },
+    {
+      "behaviorKey": "bandages",
+      "id": "loot:abandoned-backpack:item#1",
+      "kind": "item",
+      "modifier": 4
+    },
+    {
+      "behaviorKey": "shovel",
+      "durability": 12,
+      "id": "loot:tool-rack:item#0",
+      "kind": "item",
+      "modifier": 3
+    },
+    {
+      "behaviorKey": "lantern",
+      "id": "loot:tool-rack:item#1",
+      "kind": "item",
+      "modifier": 0
+    },
+    {
+      "behaviorKey": "torch",
+      "durability": 14,
+      "id": "loot:votive-shelf:item#0",
+      "kind": "item",
+      "modifier": 2
+    },
+    {
+      "behaviorKey": "hymnal",
+      "id": "loot:votive-shelf:item#1",
+      "kind": "item",
+      "modifier": 0
+    },
+    {
+      "behaviorKey": "machete",
+      "durability": 14,
+      "id": "loot:undercroft-cache:item#0",
+      "kind": "item",
+      "modifier": 6
+    },
+    {
+      "behaviorKey": "first-aid-kit",
+      "id": "loot:undercroft-cache:item#1",
+      "kind": "item",
+      "modifier": 7
+    },
+    {
+      "behaviorKey": "fence-spike",
+      "durability": 10,
+      "id": "loot:iron-fence:item#0",
+      "kind": "item",
+      "modifier": 3
+    },
+    {
+      "behaviorKey": "grave-marker",
+      "durability": 6,
+      "id": "loot:fallen-marker:item#0",
+      "kind": "item",
+      "modifier": 2
+    },
+    {
+      "behaviorKey": "revolver",
+      "durability": 6,
+      "id": "loot:founders-gun-case:item#0",
+      "kind": "item",
+      "modifier": 8
+    },
+    {
+      "behaviorKey": "sextons-ledger",
+      "id": "loot:founders-gun-case:item#1",
+      "kind": "item",
+      "modifier": 0
+    },
+    {
+      "behaviorKey": "silver-trowel",
+      "durability": 12,
+      "id": "loot:open-niche:item#0",
+      "kind": "item",
+      "modifier": 3
+    },
+    {
+      "behaviorKey": "smelling-salts",
+      "id": "loot:sunken-reliquary:item#0",
+      "kind": "item",
+      "modifier": 5
+    },
+    {
+      "behaviorKey": "hunting-knife",
+      "durability": 16,
+      "id": "loot:lime-bench:item#0",
+      "kind": "item",
+      "modifier": 5
+    },
+    {
+      "behaviorKey": "whiskey-flask",
+      "id": "loot:offering-bowl:item#0",
+      "kind": "item",
+      "modifier": 3
+    },
+    {
+      "behaviorKey": "fence-spike-2",
+      "durability": 8,
+      "id": "loot:yew-gate:item#0",
+      "kind": "item",
+      "modifier": 3
+    },
+    {
+      "behaviorKey": "cough-drops",
+      "id": "loot:drowned-lockbox:item#0",
+      "kind": "item",
+      "modifier": 3
+    },
+    {
+      "consumeOnUse": false,
+      "id": "mob:The Tyler:drop#0",
+      "keyCode": "undercroft",
+      "kind": "key",
+      "name": "Tyler's Brass Key"
+    },
+    {
+      "consumeOnUse": false,
+      "id": "mob:Wight of the Founder:drop#0",
+      "keyCode": "founder",
+      "kind": "key",
+      "name": "Founder's Bronze Key"
+    }
+  ],
+  "loot": [
+    {
+      "capacity": 4,
+      "contentIds": [
+        "loot:abandoned-backpack:item#0",
+        "loot:abandoned-backpack:item#1"
+      ],
+      "description": "Somebody's backpack, dropped at the gate. Whoever dared whoever, they left in a hurry.",
+      "id": "loot:abandoned-backpack"
+    },
+    {
+      "capacity": 4,
+      "contentIds": [
+        "loot:tool-rack:item#0",
+        "loot:tool-rack:item#1"
+      ],
+      "description": "A rack of grave-tender's tools.",
+      "id": "loot:tool-rack"
+    },
+    {
+      "capacity": 4,
+      "contentIds": [
+        "loot:votive-shelf:item#0",
+        "loot:votive-shelf:item#1"
+      ],
+      "description": "A shelf of candles and one long processional torch, pitch-headed and ready.",
+      "id": "loot:votive-shelf"
+    },
+    {
+      "capacity": 4,
+      "contentIds": [
+        "loot:undercroft-cache:item#0",
+        "loot:undercroft-cache:item#1"
+      ],
+      "description": "A lodge storage chest, banded in iron. The masons kept their working tools sharp.",
+      "id": "loot:undercroft-cache"
+    },
+    {
+      "capacity": 3,
+      "contentIds": [
+        "loot:iron-fence:item#0"
+      ],
+      "description": "The sagging plot fence. One decorative spike lifts free with a squeal.",
+      "id": "loot:iron-fence"
+    },
+    {
+      "capacity": 3,
+      "contentIds": [
+        "loot:fallen-marker:item#0"
+      ],
+      "description": "A toppled wooden grave marker, weathered to a club's heft.",
+      "id": "loot:fallen-marker"
+    },
+    {
+      "capacity": 4,
+      "contentIds": [
+        "loot:founders-gun-case:item#0",
+        "loot:founders-gun-case:item#1"
+      ],
+      "description": "The long oak case, velvet-lined: the founder was buried with his sidearm — and with a ledger he perhaps meant no one to read.",
+      "id": "loot:founders-gun-case"
+    },
+    {
+      "capacity": 3,
+      "contentIds": [
+        "loot:open-niche:item#0"
+      ],
+      "description": "A niche whose brass door hangs open. Inside, wrapped in velvet, lies a ceremonial trowel — lodge silver, cold as a promise.",
+      "id": "loot:open-niche"
+    },
+    {
+      "capacity": 3,
+      "contentIds": [
+        "loot:sunken-reliquary:item#0"
+      ],
+      "description": "A little tin reliquary tucked between femurs.",
+      "id": "loot:sunken-reliquary"
+    },
+    {
+      "capacity": 3,
+      "contentIds": [
+        "loot:lime-bench:item#0"
+      ],
+      "description": "The stained workbench. Beneath it, wrapped in oilcloth and shoved deep against the wall, something with an edge.",
+      "id": "loot:lime-bench"
+    },
+    {
+      "capacity": 3,
+      "contentIds": [
+        "loot:offering-bowl:item#0"
+      ],
+      "description": "A stone bowl at the circle's center, where someone still leaves offerings.",
+      "id": "loot:offering-bowl"
+    },
+    {
+      "capacity": 3,
+      "contentIds": [
+        "loot:yew-gate:item#0"
+      ],
+      "description": "A rusted side-gate wedged into the yews, its finial spike loose.",
+      "id": "loot:yew-gate"
+    },
+    {
+      "capacity": 3,
+      "contentIds": [
+        "loot:drowned-lockbox:item#0"
+      ],
+      "description": "A rusted lockbox lying in the shallows, lid sprung.",
+      "id": "loot:drowned-lockbox"
+    }
+  ],
+  "materialCaches": [
+    {
+      "contents": {
+        "cloth": 2,
+        "wood": 2
+      },
+      "depleted": false,
+      "id": "cache:kindling-pile"
+    },
+    {
+      "contents": {
+        "cloth": 2
+      },
+      "depleted": false,
+      "id": "cache:shroud-scraps"
+    },
+    {
+      "contents": {
+        "cloth": 1,
+        "wood": 2
+      },
+      "depleted": false,
+      "id": "cache:deadfall-branches"
+    }
+  ],
+  "rooms": [
+    {
+      "dark": false,
+      "description": "The roofed gate of Solomon's Rest. The iron scrollwork spells a square and compasses, and the padlock your friends clicked shut behind you is still warm.",
+      "exits": {},
+      "id": "room:Lychgate",
+      "lightSourceIds": [],
+      "lootIds": [
+        "loot:abandoned-backpack"
+      ],
+      "materialCacheIds": [],
+      "name": "Lychgate",
+      "occupantIds": [
+        "player:Alex",
+        "player:Priya",
+        "player:Brock",
+        "player:Tiffany"
+      ],
+      "scenes": [
+        {
+          "behaviorKey": "the-dare",
+          "id": "scene:Lychgate:the-dare:enter",
+          "phase": "enter",
+          "state": {}
+        }
+      ],
+      "spawnModifier": 0
+    },
+    {
+      "dark": false,
+      "description": "A ribbon of white gravel between leaning rows of slate. Your footsteps sound much louder than they should.",
+      "exits": {},
+      "id": "room:Gravel Path",
+      "lightSourceIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "name": "Gravel Path",
+      "occupantIds": [],
+      "scenes": [
+        {
+          "behaviorKey": "the-watcher",
+          "id": "scene:Gravel Path:the-watcher:enter",
+          "phase": "enter",
+          "state": {}
+        }
+      ],
+      "spawnModifier": 1
+    },
+    {
+      "dark": false,
+      "description": "A one-room stone lodge, door ajar. A kettle sits on a cold stove, and a coat hangs by the door as if its owner means to return.",
+      "exits": {},
+      "id": "room:Caretakers Lodge",
+      "lightSourceIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "name": "Caretakers Lodge",
+      "occupantIds": [
+        "mob:The Sexton"
+      ],
+      "scenes": [],
+      "spawnModifier": 0
+    },
+    {
+      "dark": false,
+      "description": "A lean-to of tar-papered boards. Rakes, twine, and grave-digging tools hang in orderly silhouettes.",
+      "exits": {},
+      "id": "room:Toolshed",
+      "lightSourceIds": [],
+      "lootIds": [
+        "loot:tool-rack"
+      ],
+      "materialCacheIds": [
+        "cache:kindling-pile"
+      ],
+      "name": "Toolshed",
+      "occupantIds": [],
+      "scenes": [],
+      "spawnModifier": 0
+    },
+    {
+      "dark": false,
+      "description": "A small lodge chapel. Votive candles gutter beneath a wall of mason's marks, and a figure in an old-fashioned coat stands guard at the inner door — through you, the candlelight passes him entirely.",
+      "exits": {},
+      "id": "room:Chapel of the Compasses",
+      "lightSourceIds": [],
+      "lootIds": [
+        "loot:votive-shelf"
+      ],
+      "materialCacheIds": [],
+      "name": "Chapel of the Compasses",
+      "occupantIds": [
+        "mob:The Tyler"
+      ],
+      "scenes": [],
+      "spawnModifier": 1
+    },
+    {
+      "dark": true,
+      "description": "A vaulted cellar beneath the chapel, black and bone-dry. Whatever the lodge kept down here, they kept it locked.",
+      "exits": {},
+      "id": "room:Undercroft",
+      "lightSourceIds": [],
+      "lootIds": [
+        "loot:undercroft-cache"
+      ],
+      "materialCacheIds": [],
+      "name": "Undercroft",
+      "occupantIds": [],
+      "scenes": [
+        {
+          "behaviorKey": "undercroft-chill",
+          "id": "scene:Undercroft:undercroft-chill:enter",
+          "phase": "enter",
+          "state": {}
+        }
+      ],
+      "spawnModifier": 0
+    },
+    {
+      "dark": false,
+      "description": "The oldest graves, their inscriptions worn to braille. A wrought-iron fence sags around a family plot, spikes loose in their sockets.",
+      "exits": {},
+      "id": "room:Old Yard",
+      "lightSourceIds": [],
+      "lootIds": [
+        "loot:iron-fence"
+      ],
+      "materialCacheIds": [],
+      "name": "Old Yard",
+      "occupantIds": [],
+      "scenes": [],
+      "spawnModifier": 1
+    },
+    {
+      "dark": false,
+      "description": "Unmarked mounds under thistle. Something small and masked rummages in the leaf litter.",
+      "exits": {},
+      "id": "room:Potters Field",
+      "lightSourceIds": [],
+      "lootIds": [
+        "loot:fallen-marker"
+      ],
+      "materialCacheIds": [],
+      "name": "Potters Field",
+      "occupantIds": [
+        "mob:Raccoon"
+      ],
+      "scenes": [],
+      "spawnModifier": 2
+    },
+    {
+      "dark": false,
+      "description": "A great willow weeps over a single white stone. A woman in mourning gray stands beneath it — she has been standing there a very long time.",
+      "exits": {},
+      "id": "room:Widows Willow",
+      "lightSourceIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "name": "Widows Willow",
+      "occupantIds": [
+        "npc:Widow Marbury"
+      ],
+      "scenes": [],
+      "spawnModifier": 0
+    },
+    {
+      "dark": false,
+      "description": "A street of little stone houses for the dead. One bronze door at the row's end is newer than the rest, and something inside one of the crypts is breathing.",
+      "exits": {},
+      "id": "room:Mausoleum Row",
+      "lightSourceIds": [],
+      "lootIds": [],
+      "materialCacheIds": [],
+      "name": "Mausoleum Row",
+      "occupantIds": [
+        "mob:Wight of the Founder"
+      ],
+      "scenes": [],
+      "spawnModifier": 1
+    },
+    {
+      "dark": true,
+      "description": "The founder's vault. A marble sarcophagus, a wall of lodge regalia — and a long oak case with brass hinges, the kind made for things that fire.",
+      "exits": {},
+      "id": "room:Founders Mausoleum",
+      "lightSourceIds": [],
+      "lootIds": [
+        "loot:founders-gun-case"
+      ],
+      "materialCacheIds": [],
+      "name": "Founders Mausoleum",
+      "occupantIds": [],
+      "scenes": [
+        {
+          "behaviorKey": "founders-reveal",
+          "id": "scene:Founders Mausoleum:founders-reveal:enter",
+          "phase": "enter",
+          "state": {}
+        }
+      ],
+      "spawnModifier": 0
+    },
+    {
+      "dark": false,
+      "description": "Walls of little brass-doored niches, urn after urn. A few doors hang open, ash spilled like spent hourglasses.",
+      "exits": {},
+      "id": "room:Columbarium",
+      "lightSourceIds": [],
+      "lootIds": [
+        "loot:open-niche"
+      ],
+      "materialCacheIds": [],
+      "name": "Columbarium",
+      "occupantIds": [],
+      "scenes": [],
+      "spawnModifier": 1
+    },
+    {
+      "dark": true,
+      "description": "A half-sunken vault stacked with folded bones. The femurs are sorted by length. Someone was very patient.",
+      "exits": {},
+      "id": "room:Ossuary",
+      "lightSourceIds": [],
+      "lootIds": [
+        "loot:sunken-reliquary"
+      ],
+      "materialCacheIds": [
+        "cache:shroud-scraps"
+      ],
+      "name": "Ossuary",
+      "occupantIds": [],
+      "scenes": [],
+      "spawnModifier": 1
+    },
+    {
+      "dark": true,
+      "description": "A windowless outbuilding that smells of quicklime and old earth. The workbench is stained in ways a workbench should not be.",
+      "exits": {},
+      "id": "room:Charnel House",
+      "lightSourceIds": [],
+      "lootIds": [
+        "loot:lime-bench"
+      ],
+      "materialCacheIds": [],
+      "name": "Charnel House",
+      "occupantIds": [],
+      "scenes": [],
+      "spawnModifier": 1
+    },
+    {
+      "dark": false,
+      "description": "Nine granite obelisks in a ring, each carved with an all-seeing eye. Standing in the center, you are certain all nine are looking at you.",
+      "exits": {},
+      "id": "room:Obelisk Circle",
+      "lightSourceIds": [],
+      "lootIds": [
+        "loot:offering-bowl"
+      ],
+      "materialCacheIds": [],
+      "name": "Obelisk Circle",
+      "occupantIds": [],
+      "scenes": [],
+      "spawnModifier": 1
+    },
+    {
+      "dark": false,
+      "description": "A corridor of black yews clipped into walls. The dark between their trunks is total, and now and then it shifts.",
+      "exits": {},
+      "id": "room:Yew Alley",
+      "lightSourceIds": [],
+      "lootIds": [
+        "loot:yew-gate"
+      ],
+      "materialCacheIds": [],
+      "name": "Yew Alley",
+      "occupantIds": [],
+      "scenes": [],
+      "spawnModifier": 1
+    },
+    {
+      "dark": false,
+      "description": "A long, still pool skinned with leaves. The reflections in it are a half-second behind, and one of them is not yours.",
+      "exits": {},
+      "id": "room:Reflecting Pool",
+      "lightSourceIds": [],
+      "lootIds": [
+        "loot:drowned-lockbox"
+      ],
+      "materialCacheIds": [],
+      "name": "Reflecting Pool",
+      "occupantIds": [],
+      "scenes": [],
+      "spawnModifier": 1
+    },
+    {
+      "dark": true,
+      "description": "A sunken dell where the ground has settled over something. Fog pools here knee-deep, and the grass grows in rib-shaped rows.",
+      "exits": {},
+      "id": "room:Bone Hollow",
+      "lightSourceIds": [],
+      "lootIds": [],
+      "materialCacheIds": [
+        "cache:deadfall-branches"
+      ],
+      "name": "Bone Hollow",
+      "occupantIds": [],
+      "scenes": [],
+      "spawnModifier": 2
+    }
+  ],
+  "schemaVersion": 6
+}

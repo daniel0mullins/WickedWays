@@ -53,6 +53,15 @@ const HOLLOW_CATALOG: &str =
 // the launcher's `?campaign=` boot path requires.
 const COVENANT_GENESIS: &str = include_str!("../../../conformance/fixtures/covenant.genesis.json");
 const COVENANT_CATALOG: &str = include_str!("../../../conformance/fixtures/covenant.catalog.json");
+// The Dare at Solomon's Rest — the cemetery survival campaign (TOML → author → assemble, seated
+// with all four teen archetypes; single-player drives every seat, and the Sexton — a
+// computer-driven Villain — hunts whoever is left alone). The genesis is deliberately exit-less:
+// `[mapGen]` lays the yard out at `begin_campaign` from the boot seed, so every night deals a
+// fresh map.
+const SOLOMONS_GENESIS: &str =
+    include_str!("../../../conformance/fixtures/solomons-rest.genesis.json");
+const SOLOMONS_CATALOG: &str =
+    include_str!("../../../conformance/fixtures/solomons-rest.catalog.json");
 // The Warden's Gallery — the Villain & Wicked Ways Cards smoke campaign (the g2-villain author
 // oracle): a two-room gallery stalked by the Warden, a computer-driven Villain with a six-card
 // deck. Debug-tier: it exists to exercise the villain panel, the card verbs, and the solo villain
@@ -94,6 +103,7 @@ fn bundled(id: &str) -> Option<(&'static str, Option<&'static str>)> {
         "status-bar" | "g2-status-bar" => Some((STATUS_BAR_GENESIS, Some(STATUS_BAR_CATALOG))),
         "hollow-house" | "hollow" => Some((HOLLOW_GENESIS, Some(HOLLOW_CATALOG))),
         "covenant" => Some((COVENANT_GENESIS, Some(COVENANT_CATALOG))),
+        "solomons-rest" | "solomons" => Some((SOLOMONS_GENESIS, Some(SOLOMONS_CATALOG))),
         "villain" | "g2-villain" => Some((VILLAIN_GENESIS, Some(VILLAIN_CATALOG))),
         _ => None,
     }
@@ -592,6 +602,16 @@ pub fn campaign_registry() -> &'static [CampaignInfo] {
             multiplayer: false,
         },
         CampaignInfo {
+            slug: "solomons-rest",
+            title: "The Dare at Solomon's Rest",
+            blurb: "Four teens, one night in a Masonic cemetery that redraws its own paths. Survive to daybreak — the Sexton collects the lonely.",
+            intro: "The dare was simple: spend one night inside the gates of Solomon's Rest. But the yard never lays out the same way twice, the Sexton walks its rows with a hand of wicked cards, and his old compact binds him to take only the ones found alone. Keep the four of you together. Last until daybreak.",
+            button_text: "Take the Dare",
+            surfaces: BOTH_SURFACES,
+            debug: false,
+            multiplayer: false,
+        },
+        CampaignInfo {
             slug: "villain",
             title: "The Warden's Gallery",
             blurb: "A watchful gallery where the Warden plays Wicked Ways cards against you.",
@@ -840,6 +860,7 @@ mod tests {
             "facade-free-vs-advancing",
             "status-bar",
             "hollow-house",
+            "solomons-rest",
         ] {
             let (snapshot, catalog) = bundled_campaign(id).unwrap_or_else(|e| panic!("{id}: {e}"));
             let started = snapshot.campaign.started;
@@ -856,6 +877,36 @@ mod tests {
                 "{id}: should project a view"
             );
         }
+    }
+
+    #[test]
+    fn solomons_rest_bundle_seats_the_four_teens_and_generates_its_map_at_begin() {
+        // The launcher bundle end-to-end: the committed genesis is pristine and EXIT-LESS
+        // ([mapGen] campaigns lay the yard out at begin), seats all four teen archetypes with
+        // the Sexton designated Villain, and BeginCampaign wires a playable map.
+        let (snapshot, catalog) = bundled_campaign("solomons-rest").unwrap();
+        assert_eq!(snapshot.campaign.party_ids.len(), 4, "four teens seated");
+        assert!(
+            snapshot.campaign.villain.is_some(),
+            "the Sexton is designated Villain"
+        );
+        assert!(
+            snapshot.exits.is_empty(),
+            "the genesis ships exit-less — mapGen deals the yard at begin"
+        );
+        let (mut transport, mut coord) = rebuild_single(snapshot, catalog.clone());
+        assert!(matches!(
+            coord.submit(&mut transport, Command::BeginCampaign),
+            SubmitResult::Committed { .. }
+        ));
+        assert!(
+            !coord.replica().exits.is_empty(),
+            "begin generated the map's exits"
+        );
+        assert!(
+            project(&coord, &catalog).is_some(),
+            "solomons-rest projects a view"
+        );
     }
 
     #[test]
@@ -1263,12 +1314,13 @@ mod tests {
 
     #[test]
     fn the_menu_lists_the_shipped_campaigns_and_debug_adds_the_rest() {
-        // The default menu shows the shipped campaigns: Hollow House (single-player) and The Covenant
-        // (multiplayer). The demo/conformance campaigns stay behind `?debug`.
+        // The default menu shows the shipped campaigns: Hollow House and Solomon's Rest
+        // (single-player) and The Covenant (multiplayer). The demo/conformance campaigns stay
+        // behind `?debug`.
         let shipped: Vec<_> = menu_campaigns(false).iter().map(|c| c.slug).collect();
         assert_eq!(
             shipped,
-            vec!["hollow-house", "covenant"],
+            vec!["hollow-house", "solomons-rest", "covenant"],
             "default menu shows the shipped campaigns"
         );
         assert_eq!(
