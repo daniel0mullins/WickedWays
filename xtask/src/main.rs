@@ -210,6 +210,40 @@ fn with_manifest_version(manifest: &str, section: &str, next: Version) -> Result
     }
 }
 
+/// Bump every workspace-local package pin in a Cargo.lock. Local (path) packages are exactly
+/// the `[[package]]` blocks WITHOUT a `source` line, and they all inherit the one workspace
+/// version; registry/git packages keep their pins, and the preamble (the lockfile-format
+/// `version = N`) sits before the first block and is never touched. Purely textual, so a
+/// release needs no cargo subprocess (which can't resolve offline in every environment) and
+/// stays byte-deterministic.
+fn with_lockfile_versions(lock: &str, next: Version) -> String {
+    let mut parts = lock.split("[[package]]");
+    let mut out = String::from(parts.next().unwrap_or_default());
+    for block in parts {
+        out.push_str("[[package]]");
+        let version_at = if block.contains("\nsource = ") {
+            None
+        } else {
+            block.find("\nversion = \"")
+        };
+        match version_at {
+            Some(at) => {
+                let open = at + "\nversion = \"".len();
+                match block[open..].find('"') {
+                    Some(len) => {
+                        out.push_str(&block[..open]);
+                        out.push_str(&next.to_string());
+                        out.push_str(&block[open + len..]);
+                    }
+                    None => out.push_str(block),
+                }
+            }
+            None => out.push_str(block),
+        }
+    }
+    out
+}
+
 /// Read the `version = "…"` inside `[section]` of a Cargo manifest.
 fn manifest_version(manifest: &str, section: &str) -> Result<Version, String> {
     let header = format!("[{section}]");
@@ -321,6 +355,8 @@ fn slug(summary: &str) -> String {
         }
         out.push_str(&word.to_ascii_lowercase());
     }
+    // A single over-long first word skips the loop's cap — enforce it unconditionally.
+    out.truncate(48);
     if out.is_empty() {
         out.push_str("change");
     }
@@ -419,37 +455,29 @@ fn cmd_release(args: &[String]) -> Result<(), String> {
     let bump = sets.iter().map(|s| s.bump).max().expect("non-empty");
     let next = current.bumped(bump);
 
-    // The two version-carrying manifests: the workspace root (every member inherits it) and the
-    // deliberately workspace-excluded desktop shell, kept in lockstep textually.
-    write(
-        &root_manifest_path,
-        &with_manifest_version(&root_manifest, "workspace.package", next)?,
-    )?;
+    // Read and transform EVERYTHING before the first write, so a malformed input can never
+    // leave the repo half-released (version bumped, changesets still pending). The version
+    // lands in five committed files: both manifests that literally carry it (the workspace
+    // root, inherited by every member, and the workspace-excluded desktop shell), both
+    // lockfiles (a stale pin would dirty the tree on the next build), and the CHANGELOG.
+    let new_root_manifest = with_manifest_version(&root_manifest, "workspace.package", next)?;
     let desktop_path = root.join("desktop/Cargo.toml");
-    write(
-        &desktop_path,
-        &with_manifest_version(&read(&desktop_path)?, "package", next)?,
-    )?;
-
+    let new_desktop_manifest = with_manifest_version(&read(&desktop_path)?, "package", next)?;
+    let root_lock_path = root.join("Cargo.lock");
+    let new_root_lock = with_lockfile_versions(&read(&root_lock_path)?, next);
+    let desktop_lock_path = root.join("desktop/Cargo.lock");
+    let new_desktop_lock = with_lockfile_versions(&read(&desktop_lock_path)?, next);
     let changelog_path = root.join("CHANGELOG.md");
-    let changelog = read(&changelog_path)?;
-    write(
-        &changelog_path,
-        &insert_release(&changelog, &render_release(next, &date, &sets)),
-    )?;
+    let new_changelog =
+        insert_release(&read(&changelog_path)?, &render_release(next, &date, &sets));
 
+    write(&root_manifest_path, &new_root_manifest)?;
+    write(&desktop_path, &new_desktop_manifest)?;
+    write(&root_lock_path, &new_root_lock)?;
+    write(&desktop_lock_path, &new_desktop_lock)?;
+    write(&changelog_path, &new_changelog)?;
     for set in &sets {
         fs::remove_file(&set.path).map_err(|e| format!("remove {}: {e}", set.path.display()))?;
-    }
-
-    // Refresh the workspace members' pins in Cargo.lock; any later cargo command would do the
-    // same, this just keeps the release commit self-contained. Best-effort by design.
-    let lock = std::process::Command::new("cargo")
-        .args(["update", "--workspace", "--offline"])
-        .current_dir(&root)
-        .status();
-    if !lock.map(|s| s.success()).unwrap_or(false) {
-        println!("note: `cargo update --workspace --offline` failed — run any cargo command to refresh Cargo.lock");
     }
 
     println!(
@@ -616,5 +644,20 @@ mod tests {
         assert!(
             slug("a very long summary that keeps going and going and going and going").len() <= 48
         );
+        // A single over-long first word is capped too, not passed through whole.
+        assert!(slug(&"x".repeat(80)).len() <= 48);
+    }
+
+    #[test]
+    fn lockfiles_bump_only_local_path_packages() {
+        let lock = "version = 4\n\n[[package]]\nname = \"serde\"\nversion = \"1.0.200\"\nsource = \"registry+https://github.com/rust-lang/crates.io-index\"\nchecksum = \"abc\"\n\n[[package]]\nname = \"wickedways-core\"\nversion = \"0.0.1\"\ndependencies = [\n \"serde\",\n]\n";
+        let out = with_lockfile_versions(lock, Version::parse("0.2.0").unwrap());
+        // The path-local package (no `source` line) is bumped…
+        assert!(out.contains("name = \"wickedways-core\"\nversion = \"0.2.0\""));
+        // …the registry package and the lockfile-format preamble are untouched.
+        assert!(out.contains("version = \"1.0.200\""));
+        assert!(out.starts_with("version = 4\n"));
+        // Everything else is byte-identical.
+        assert_eq!(out.replace("0.2.0", "0.0.1"), lock);
     }
 }
