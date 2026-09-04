@@ -48,6 +48,9 @@ RUN apt-get update \
 # Rust sources only, so a docs/TS-only change never invalidates this (slow) stage.
 COPY Cargo.toml Cargo.lock ./
 COPY crates ./crates
+# xtask (the release tooling) is a workspace member, so no cargo command can even parse the
+# workspace without its manifest present — copied for the manifest's sake, never compiled here.
+COPY xtask ./xtask
 # The web client bundles the demo/caretaker/facade/status-bar campaigns via
 # `include_str!("../../../conformance/fixtures/*.json")`, and the studio bundles its
 # templates via `include_str!("../../../../campaigns/*.toml")`, so both directories must be

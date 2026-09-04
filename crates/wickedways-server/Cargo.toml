@@ -1,6 +1,6 @@
 [package]
 name = "wickedways-server"
-version = "0.0.1"
+version.workspace = true
 edition = "2021"
 
 # The room server. Hosts a native `SyncAuthority`

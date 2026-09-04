@@ -1,6 +1,6 @@
 [package]
 name = "wickedways-transport"
-version = "0.0.1"
+version.workspace = true
 edition = "2021"
 
 # The multiplayer wire protocol (Phase 2c). Shared by the axum room server

@@ -37,6 +37,26 @@ pnpm docs:build     # production build into docs-site/.vitepress/dist
 
 It deploys automatically on every push to `main` via `.github/workflows/docs.yml`.
 
+## Versioning & releases
+
+The whole product carries **one semantic version**: the `[workspace.package] version` in the root
+`Cargo.toml`, inherited by every crate (and mirrored into the workspace-excluded
+`desktop/Cargo.toml` at release time). Releases are driven by **changesets** — pending-change
+notes in [`.changesets/`](.changesets/README.md), each naming its semver bump and carrying the
+prose that becomes its [CHANGELOG.md](CHANGELOG.md) entry:
+
+```bash
+cargo xtask add minor "Exits now replicate through the sync delta."  # record a change
+cargo xtask status                                                    # what's pending, next version
+cargo xtask release                                                   # cut it: bump versions, write CHANGELOG.md
+```
+
+`release` takes the largest pending bump (major ⟩ minor ⟩ patch), rewrites the version fields and
+the changelog, deletes the consumed changesets, and prints the `git commit` / `git tag vX.Y.Z`
+commands — committing and tagging stay explicit. CI (`.github/workflows/changeset.yml`) requires
+a changeset on any PR touching shipped code; the `no-changeset` label exempts internal-only work.
+The tool itself is the dependency-free `xtask/` crate, unit-tested like everything else.
+
 ## Architecture: the Rust workspace
 
 Everything that ships lives in `crates/`:
