@@ -1,6 +1,6 @@
 [package]
 name = "wickedways-studio"
-version = "0.0.1"
+version.workspace = true
 edition = "2021"
 
 # Campaign Studio — the graphical campaign-authoring app (docs/campaign-studio-spec.md).

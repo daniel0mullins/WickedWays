@@ -1,0 +1,15 @@
+# Release tooling (versioning + changesets) — a dev-only workspace member, never shipped.
+# Run it through the `.cargo/config.toml` alias: `cargo xtask <command>`.
+#
+# Deliberately dependency-free: the changeset format, the semver math, and the CHANGELOG
+# rendering are all small enough to own outright, and a zero-dep tool can never drag the
+# workspace gates into new system requirements.
+[package]
+name = "xtask"
+version.workspace = true
+edition = "2021"
+
+[dependencies]
+
+[lints]
+workspace = true

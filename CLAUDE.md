@@ -55,6 +55,9 @@ cargo run --manifest-path desktop/Cargo.toml --bin wickedways-studio-desktop  # 
 cd desktop && dx bundle --release --platform desktop            # desktop installers (.deb/.rpm/AppImage | .app/.dmg | .msi) — dioxus-cli 0.6.3; --platform is required
 cargo clippy -p wickedways-wasm --target wasm32-unknown-unknown --features conformance -- -D warnings
 pnpm docs:build                                                 # VitePress docs site (docs-site/)
+cargo xtask add <major|minor|patch> "<summary>"                 # record a changeset (.changesets/)
+cargo xtask status                                              # pending changesets + next version
+cargo xtask release                                             # cut a release (CHANGELOG.md + version bumps)
 ```
 
 Run one test file or filter by name:
@@ -115,4 +118,7 @@ golden.
 Update `README.md` (and relevant rustdoc) to reflect new mechanics before considering the work
 done — the README is living documentation. If the feature changes engine-observable behavior,
 regenerate the goldens deliberately (see above) and include the reviewed diff in the same
-change.
+change. Record a changeset (`cargo xtask add <bump> "<summary>"`, written for players/modders —
+see `.changesets/README.md`); CI requires one on PRs that touch shipped code. Never bump version
+fields by hand — `cargo xtask release` owns them (one workspace version, mirrored into
+`desktop/Cargo.toml`).

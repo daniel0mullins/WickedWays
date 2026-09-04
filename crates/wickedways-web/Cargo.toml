@@ -1,6 +1,6 @@
 [package]
 name = "wickedways-web"
-version = "0.0.1"
+version.workspace = true
 edition = "2021"
 
 # The Dioxus web client (Phase 2c, sub-project D). Slice 0 is the CSS-carryover

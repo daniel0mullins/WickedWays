@@ -1,0 +1,3 @@
+# `cargo xtask …` — the release tooling (see xtask/ and .changesets/README.md).
+[alias]
+xtask = "run --quiet -p xtask --"
