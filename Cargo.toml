@@ -1,11 +1,18 @@
 [workspace]
 resolver = "2"
-members = ["crates/wickedways-core", "crates/wickedways-wasm", "crates/wickedways-assemble", "crates/wickedways-author", "crates/wickedways-transport", "crates/wickedways-server", "crates/wickedways-tabletop", "crates/wickedways-controller", "crates/wickedways-web", "crates/wickedways-studio"]
+members = ["crates/wickedways-core", "crates/wickedways-wasm", "crates/wickedways-assemble", "crates/wickedways-author", "crates/wickedways-transport", "crates/wickedways-server", "crates/wickedways-tabletop", "crates/wickedways-controller", "crates/wickedways-web", "crates/wickedways-studio", "xtask"]
 # The desktop shell stays OUT of the workspace on purpose: it is the only crate linking the
 # native windowing stack (GTK/WebKit on Linux), and excluding it keeps every workspace-wide
 # gate (test/clippy --all-features) free of system-package requirements. Build it with
 # `cargo run --manifest-path desktop/Cargo.toml`.
 exclude = ["desktop"]
+
+# The ONE product version, shared by every workspace crate (`version.workspace = true`) and
+# mirrored into the workspace-excluded `desktop/Cargo.toml` by `cargo xtask release`. Never bump
+# it by hand: releases are cut from the pending changesets in `.changesets/` (see CHANGELOG.md
+# and `xtask/`), which decide the semver bump and write this field.
+[workspace.package]
+version = "0.0.1"
 
 # The workspace lint policy. Crates opt in with `lints.workspace = true`;
 # a crate without the key keeps the default lint set, which lets strictness
