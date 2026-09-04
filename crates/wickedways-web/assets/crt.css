@@ -54,6 +54,9 @@
   gap: 0.4224em;
   background: radial-gradient(ellipse at 50% 45%, #1b1a14 0%, var(--color-bg) 70%, #0c0b08 100%);
   border-radius: 14px / 18px;
+  /* Nothing paints past the bezel: a long unbreakable line clips at the glass instead of
+     escaping the monitor. */
+  overflow: hidden;
 }
 
 /* CRT scanline artifact — pointer-events:none so content stays clickable. */
@@ -167,14 +170,29 @@
   opacity: 0.65;
 }
 .chips { display: flex; flex-wrap: wrap; gap: 0.3168em 0.6336em; }
-.chip { white-space: nowrap; }
+/* A chip wraps internally when it must (a sentence-long loot description) instead of
+   blowing the column wide and painting past the screen. */
+.chip { max-width: 100%; overflow-wrap: anywhere; }
 .chip .meta { opacity: 0.6; font-size: 0.82em; }
 
 /* ── Campaign art (shown as-is, framed) ─────────────────────────────────────── */
+/* Room art + description in a row: the WHOLE image (natural aspect, no cropping) at the
+   panel's left edge, the description flowing beside it. */
+.room-media {
+  display: flex; align-items: flex-start; gap: 0.75rem;
+  margin: 0.35rem 0 0.3168em;
+}
+.room-media .room-desc { flex: 1 1 0; min-width: 0; margin: 0; }
 .room-art {
-  display: block; width: 100%; max-height: 11rem; object-fit: cover;
-  margin: 0.35rem 0; border-radius: 2px;
+  display: block; flex: 0 0 auto;
+  width: clamp(8rem, 34%, 16rem); height: auto;
+  border-radius: 2px;
   border: 1px solid color-mix(in srgb, var(--color-text) 25%, transparent);
+}
+/* On a narrow monitor, stack the art above the description instead of squeezing the text. */
+@media (max-width: 620px) {
+  .room-media { flex-direction: column; }
+  .room-art { width: 100%; max-width: 16rem; }
 }
 /* The clicked noun's portrait: a dismissible inset between room panel and transcript. */
 .portrait-inset {

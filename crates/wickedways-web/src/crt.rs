@@ -12,7 +12,7 @@
 //! command list), and nouns in the room description and narration are clickable — a click fills the
 //! prompt with `examine <noun>` ([`link_nouns`](crate::link_nouns), against the current scope's names
 //! and aliases) and, when the entity carries campaign art, shows its portrait as a dismissible
-//! inset (room art renders above the description whenever the room is lit).
+//! inset (room art renders in full beside the description whenever the room is lit).
 //! Procedural audio plays through the shared [`AudioRuntime`] (the `audio` command
 //! toggles it), and `save`/`restore`/`restart` drive the single-player lifecycle. A welcome gate
 //! shows the campaign's title + intro ([`welcome_for`](crate::driver::welcome_for) — the manifest
@@ -935,6 +935,10 @@ fn game_view(v: &ViewModel, draft: Signal<String>, portrait: Signal<Option<Strin
     };
     rsx! {
         div { class: "room-name", "{v.room.name}" }
+        // Art and description share a flex ROW: the whole image (no cropping) sits at the
+        // panel's left edge with the description flowing beside it; an art-less (or dark)
+        // room renders the description alone at full width.
+        div { class: "room-media",
         if let Some(url) = room_art {
             img { class: "room-art", src: "{url}", alt: "{v.room.name}" }
         }
@@ -945,6 +949,7 @@ fn game_view(v: &ViewModel, draft: Signal<String>, portrait: Signal<Option<Strin
             } else {
                 "It is too dark to see."
             }
+        }
         }
 
         // The room's visible contents: occupants, loot containers (by their authored description),
