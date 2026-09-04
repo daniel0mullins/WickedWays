@@ -58,6 +58,10 @@
       "ledger",
       "journal"
     ],
+    "sextons-spade": [
+      "spade",
+      "sextons spade"
+    ],
     "shovel": [
       "shovel",
       "spade"
@@ -156,27 +160,6 @@
               "target": {
                 "index": {
                   "kind": "lit",
-                  "value": 0.0
-                },
-                "kind": "index",
-                "list": {
-                  "kind": "party"
-                }
-              }
-            },
-            "kind": "emit"
-          },
-          {
-            "effect": {
-              "delta": {
-                "kind": "lit",
-                "value": -3.0
-              },
-              "kind": "adjustStat",
-              "stat": "sanity",
-              "target": {
-                "index": {
-                  "kind": "lit",
                   "value": 1.0
                 },
                 "kind": "index",
@@ -220,6 +203,27 @@
                 "index": {
                   "kind": "lit",
                   "value": 3.0
+                },
+                "kind": "index",
+                "list": {
+                  "kind": "party"
+                }
+              }
+            },
+            "kind": "emit"
+          },
+          {
+            "effect": {
+              "delta": {
+                "kind": "lit",
+                "value": -3.0
+              },
+              "kind": "adjustStat",
+              "stat": "sanity",
+              "target": {
+                "index": {
+                  "kind": "lit",
+                  "value": 4.0
                 },
                 "kind": "index",
                 "list": {
@@ -608,7 +612,7 @@
               "op": "eq",
               "right": {
                 "kind": "lit",
-                "value": "mob:The Sexton"
+                "value": "player:The Sexton"
               }
             },
             "else": {
@@ -626,7 +630,7 @@
                   "op": "eq",
                   "right": {
                     "kind": "lit",
-                    "value": "mob:The Sexton"
+                    "value": "player:The Sexton"
                   }
                 },
                 "op": "and",
@@ -642,18 +646,37 @@
                       "left": {
                         "kind": "bin",
                         "left": {
-                          "field": "id",
-                          "kind": "get",
-                          "of": {
-                            "kind": "element"
+                          "kind": "bin",
+                          "left": {
+                            "field": "id",
+                            "kind": "get",
+                            "of": {
+                              "kind": "element"
+                            }
+                          },
+                          "op": "ne",
+                          "right": {
+                            "field": "target",
+                            "kind": "get",
+                            "of": {
+                              "kind": "damage"
+                            }
                           }
                         },
-                        "op": "ne",
+                        "op": "and",
                         "right": {
-                          "field": "target",
-                          "kind": "get",
-                          "of": {
-                            "kind": "damage"
+                          "kind": "bin",
+                          "left": {
+                            "field": "id",
+                            "kind": "get",
+                            "of": {
+                              "kind": "element"
+                            }
+                          },
+                          "op": "ne",
+                          "right": {
+                            "kind": "lit",
+                            "value": "player:The Sexton"
                           }
                         }
                       },
@@ -1003,27 +1026,6 @@
                     "target": {
                       "index": {
                         "kind": "lit",
-                        "value": 0.0
-                      },
-                      "kind": "index",
-                      "list": {
-                        "kind": "party"
-                      }
-                    }
-                  },
-                  "kind": "emit"
-                },
-                {
-                  "effect": {
-                    "delta": {
-                      "kind": "lit",
-                      "value": -1.0
-                    },
-                    "kind": "adjustStat",
-                    "stat": "sanity",
-                    "target": {
-                      "index": {
-                        "kind": "lit",
                         "value": 1.0
                       },
                       "kind": "index",
@@ -1067,6 +1069,27 @@
                       "index": {
                         "kind": "lit",
                         "value": 3.0
+                      },
+                      "kind": "index",
+                      "list": {
+                        "kind": "party"
+                      }
+                    }
+                  },
+                  "kind": "emit"
+                },
+                {
+                  "effect": {
+                    "delta": {
+                      "kind": "lit",
+                      "value": -1.0
+                    },
+                    "kind": "adjustStat",
+                    "stat": "sanity",
+                    "target": {
+                      "index": {
+                        "kind": "lit",
+                        "value": 4.0
                       },
                       "kind": "index",
                       "list": {
@@ -1144,21 +1167,40 @@
               "kind": "party"
             },
             "pred": {
-              "expr": {
-                "kind": "includes",
-                "list": {
-                  "field": "status",
+              "kind": "bin",
+              "left": {
+                "kind": "bin",
+                "left": {
+                  "field": "id",
                   "kind": "get",
                   "of": {
                     "kind": "element"
                   }
                 },
-                "value": {
+                "op": "ne",
+                "right": {
                   "kind": "lit",
-                  "value": "ko"
+                  "value": "player:The Sexton"
                 }
               },
-              "kind": "not"
+              "op": "and",
+              "right": {
+                "expr": {
+                  "kind": "includes",
+                  "list": {
+                    "field": "status",
+                    "kind": "get",
+                    "of": {
+                      "kind": "element"
+                    }
+                  },
+                  "value": {
+                    "kind": "lit",
+                    "value": "ko"
+                  }
+                },
+                "kind": "not"
+              }
             }
           }
         }
@@ -1213,7 +1255,7 @@
             "op": "gt",
             "right": {
               "kind": "lit",
-              "value": 0.0
+              "value": 1.0
             }
           },
           "op": "and",
@@ -1223,17 +1265,36 @@
               "kind": "party"
             },
             "pred": {
-              "kind": "includes",
-              "list": {
-                "field": "status",
-                "kind": "get",
-                "of": {
-                  "kind": "element"
+              "kind": "bin",
+              "left": {
+                "kind": "bin",
+                "left": {
+                  "field": "id",
+                  "kind": "get",
+                  "of": {
+                    "kind": "element"
+                  }
+                },
+                "op": "eq",
+                "right": {
+                  "kind": "lit",
+                  "value": "player:The Sexton"
                 }
               },
-              "value": {
-                "kind": "lit",
-                "value": "ko"
+              "op": "or",
+              "right": {
+                "kind": "includes",
+                "list": {
+                  "field": "status",
+                  "kind": "get",
+                  "of": {
+                    "kind": "element"
+                  }
+                },
+                "value": {
+                  "kind": "lit",
+                  "value": "ko"
+                }
               }
             }
           }
@@ -1656,6 +1717,7 @@
     "archetype:cheer-captain": "solomons-rest/the-cheer-captain.png",
     "archetype:quarterback": "solomons-rest/the-quarterback.png",
     "archetype:quiet-one": "solomons-rest/the-quiet-one.png",
+    "archetype:sexton": "solomons-rest/the-sexton.png",
     "archetype:valedictorian": "solomons-rest/the-valedictorian.png",
     "loot:abandoned-backpack": "solomons-rest/abandoned-backpack.png",
     "loot:drowned-lockbox": "solomons-rest/drowned-lockbox.png",
@@ -1672,7 +1734,6 @@
     "mob:Cemetery Rat": "solomons-rest/cemetery-rat.png",
     "mob:Raccoon": "solomons-rest/raccoon.png",
     "mob:Spectral Hound": "solomons-rest/spectral-hound.png",
-    "mob:The Sexton": "solomons-rest/the-sexton.png",
     "mob:The Tyler": "solomons-rest/the-tyler.png",
     "mob:Wight of the Founder": "solomons-rest/wight-of-the-founder.png",
     "npc:Widow Marbury": "solomons-rest/widow-marbury.png",
@@ -1977,6 +2038,26 @@
       "stat": "sanity",
       "teaches": null,
       "type": "consumable"
+    },
+    "sextons-spade": {
+      "grantsImmunity": null,
+      "immunities": null,
+      "lore": "A grave-digger's spade with a century of wear polished into the haft. It is heavier than it looks, and it swings like it wants to.",
+      "maxDurability": 24,
+      "modifier": 8,
+      "name": "The Sexton's Spade",
+      "properties": {
+        "destroyable": true,
+        "equippable": true,
+        "equipped": false,
+        "usable": false
+      },
+      "recipe": {},
+      "slot": "hand",
+      "stat": "health",
+      "teaches": null,
+      "twoHanded": true,
+      "type": "weapon"
     },
     "shovel": {
       "grantsImmunity": null,

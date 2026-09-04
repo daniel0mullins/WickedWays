@@ -226,7 +226,10 @@ the golden gates hold — and generation is a no-op (zero rng draws) for campaig
 `[mapGen]` config, keeping existing rng streams pinned. The single-player web boot seeds a fresh
 playthrough from platform entropy (`driver::rebuild_single_seeded`), which is what makes each
 night lay out differently; `restart` boots the same way, so it deals a NEW layout, while
-`restore`/`undo` rebuild from the saved snapshot on the deterministic seed-0 stream. Generated
+`restore`/`undo` rebuild from the saved snapshot on the deterministic seed-0 stream. The room
+server does the multiplayer equivalent: a fresh table draws an OS-entropy seed unless
+`ServerOptions.rng_seed` pins one (tests), so every hosted room of a `[mapGen]` campaign deals
+its own map. Generated
 exit ids are `exit:{roomIdA}|{roomIdB}` (sorted room ids — disjoint from the assembler's
 authored-name scheme). The sync delta replicates exits (the `Exit` `EntitySnapshot` variant, this
 change), so connected replicas receive generated exits live at `begin_campaign`; room snapshots

@@ -70,6 +70,8 @@ pub struct ServerOptions {
     /// Optional durable store; `None` = ephemeral (in-memory only).
     pub store: Option<Arc<dyn CampaignStore>>,
     /// Optional fixed rng seed for every campaign's authority (determinism in tests / replay).
+    /// `None` seeds each table from OS entropy instead, so every hosted room of a `[mapGen]`
+    /// campaign deals its own map.
     pub rng_seed: Option<u32>,
 }
 
@@ -184,9 +186,11 @@ impl RoomServer {
         // With a store, checkpoint on every commit so a resumed authority's snapshot is always fresh.
         let snapshot_every = if self.opts.store.is_some() { 1 } else { 20 };
         let mut world = World::from_snapshot(genesis);
-        if let Some(seed) = self.opts.rng_seed {
-            world.rng = Rng::seeded(seed);
-        }
+        // `from_snapshot` resets the transient rng to a fixed default, which would deal every
+        // hosted room of a `[mapGen]` campaign (Solomon's Rest) the identical map. A configured
+        // `rng_seed` keeps test/replay determinism; otherwise each table draws fresh entropy so
+        // every hosted room is its own night.
+        world.rng = Rng::seeded(self.opts.rng_seed.unwrap_or_else(entropy_seed));
         let catalog = self.catalog_for(campaign_id);
         let authority = SyncAuthority::new(
             world,
@@ -521,6 +525,20 @@ impl Connection {
 // ── the axum WebSocket adapter ────────────────────────────────────────────────────────────────
 
 /// An axum router serving the room server at `/ws`, plus a `/healthz` liveness probe.
+/// A fresh rng seed from OS entropy, with no rand dependency: every `RandomState` draws its own
+/// hasher keys, so consecutive calls yield unrelated values.
+fn entropy_seed() -> u32 {
+    use std::hash::{BuildHasher, Hasher};
+    let h = std::collections::hash_map::RandomState::new()
+        .build_hasher()
+        .finish();
+    #[allow(clippy::cast_possible_truncation)]
+    // folding a u64 hash into the engine's u32 seed space
+    {
+        (h ^ (h >> 32)) as u32
+    }
+}
+
 pub fn router(server: Arc<RoomServer>) -> Router {
     Router::new()
         .route("/ws", any(ws_handler))
