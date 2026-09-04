@@ -45,6 +45,30 @@ pub fn load(slot: &str) -> Option<SaveBlob> {
     serde_json::from_str(&json).ok()
 }
 
+/// The save slot for a campaign. Saves are keyed PER CAMPAIGN so one campaign's Save can never
+/// clobber — nor its Restore hydrate — another campaign's run against the wrong catalog (with two
+/// shipped single-player campaigns, an un-namespaced slot would do exactly that). A room id
+/// (`<slug>~<token>`) keys by its base campaign.
+fn campaign_slot(campaign: &str) -> String {
+    format!("{}:slot1", crate::driver::base_campaign(campaign))
+}
+
+/// Save `blob` into `campaign`'s slot.
+pub fn save_for(campaign: &str, blob: &SaveBlob) -> Result<(), String> {
+    save(&campaign_slot(campaign), blob)
+}
+
+/// Load `campaign`'s save. The Hollow House additionally falls back to the legacy un-namespaced
+/// `"slot1"` — the only slot that existed before saves were campaign-keyed, and the only shipped
+/// campaign that could have written it — so pre-existing saves keep restoring.
+pub fn load_for(campaign: &str) -> Option<SaveBlob> {
+    load(&campaign_slot(campaign)).or_else(|| {
+        (crate::driver::base_campaign(campaign) == "hollow-house")
+            .then(|| load("slot1"))
+            .flatten()
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -126,6 +150,24 @@ mod tests {
             back, blob,
             "the save blob must survive a JSON round-trip byte-for-byte"
         );
+    }
+
+    /// The platform store is unavailable in host tests (no localStorage, no desktop data dir),
+    /// so this pins the pure keying: distinct campaigns get distinct slots (one campaign's Save
+    /// can never clobber another's run), and a room id keys by its base campaign.
+    #[test]
+    fn save_slots_are_keyed_per_campaign() {
+        assert_eq!(campaign_slot("solomons-rest"), "solomons-rest:slot1");
+        assert_eq!(campaign_slot("hollow-house"), "hollow-house:slot1");
+        assert_ne!(
+            campaign_slot("solomons-rest"),
+            campaign_slot("hollow-house")
+        );
+        // A room id (`<slug>~<token>`) keys by its base campaign.
+        assert_eq!(campaign_slot("solomons-rest~a5f3"), "solomons-rest:slot1");
+        // No campaign-keyed slot ever collides with the legacy bare "slot1"
+        // (the hollow-house read fallback in `load_for`).
+        assert_ne!(campaign_slot("hollow-house"), "slot1");
     }
 
     #[test]

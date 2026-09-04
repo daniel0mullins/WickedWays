@@ -88,8 +88,9 @@ pub fn asset_url(image: &serde_json::Value) -> Option<String> {
 }
 
 /// Capitalise a lowercase [`Direction`] key for display ("north" → "North"). Only the first byte is
-/// uppercased (so "northeast" → "Northeast", NOT "NorthEast").
-fn cap(dir: Direction) -> String {
+/// uppercased (so "northeast" → "Northeast", NOT "NorthEast"). Shared by the PnC hotspot labels
+/// and the CRT exits dock.
+pub fn cap(dir: Direction) -> String {
     let key = dir.as_key();
     let mut chars = key.chars();
     match chars.next() {

@@ -536,6 +536,39 @@ fn hollow_house_playable_genesis() {
     );
 }
 
+/// The **playable** Solomon's Rest genesis the web-client launcher bundles: the cemetery campaign
+/// seated with all four teen archetypes (single-player drives every seat, and the Sexton's
+/// only-when-alone compact needs companions to mean anything; the first seat is the GM). The
+/// genesis is pristine — `[mapGen]` lays the exits at `begin_campaign` from the boot seed, so a
+/// committed genesis with zero exits is correct, and every playthrough deals a fresh yard.
+#[test]
+fn solomons_rest_playable_genesis() {
+    let party = vec![
+        Seat {
+            name: "Alex".into(),
+            archetype: Some("quiet-one".into()),
+        },
+        Seat {
+            name: "Priya".into(),
+            archetype: Some("valedictorian".into()),
+        },
+        Seat {
+            name: "Brock".into(),
+            archetype: Some("quarterback".into()),
+        },
+        Seat {
+            name: "Tiffany".into(),
+            archetype: Some("cheer-captain".into()),
+        },
+    ];
+    gate(
+        "solomons-rest",
+        "solomons-rest.genesis.json",
+        Some("solomons-rest"),
+        &party,
+    );
+}
+
 /// The **multiplayer** Covenant genesis the room server seeds: the campaign seated with only the GM
 /// host (`Keeper`), so players self-join their own Wardens at runtime (`JoinCampaign`). Gates
 /// `seat_party` at a single archetype'd GM seat, and holds the co-op `twin-wards-held` win condition
