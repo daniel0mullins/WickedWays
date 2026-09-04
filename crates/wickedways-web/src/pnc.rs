@@ -265,7 +265,7 @@ pub fn pnc_app() -> Element {
                                     snapshot: coord.snapshot(),
                                     map: map_model.read().serialize(),
                                 };
-                                match savestore::save("slot1", &blob) {
+                                match savestore::save_for(&cfg.campaign, &blob) {
                                     Ok(()) => log.write().push(LogLine::plain("Saved.".into())),
                                     Err(e) => log
                                         .write()
@@ -279,7 +279,7 @@ pub fn pnc_app() -> Element {
                         }
                         PncAction::Restore => {
                             if cfg.mode == Mode::Single {
-                                match savestore::load("slot1") {
+                                match savestore::load_for(&cfg.campaign) {
                                     Some(blob) => {
                                         let (t, c) = rebuild_single(blob.snapshot, catalog.clone());
                                         transport = t;

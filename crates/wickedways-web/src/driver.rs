@@ -537,7 +537,8 @@ pub struct CampaignInfo {
     /// Surface ids this campaign offers; `surfaces[0]` is the default. ≥ 2 → the picker is shown.
     pub surfaces: &'static [&'static str],
     /// Debug-only: hidden from the launcher menu and not resolvable unless the page has `?debug`
-    /// (the demo/conformance campaigns). The shipped campaign (Hollow House) is always visible.
+    /// (the demo/conformance campaigns). The shipped campaigns (The Hollow House, Solomon's
+    /// Rest, The Covenant) are always visible.
     pub debug: bool,
     /// Multiplayer: selecting it from the menu **hosts a new room** (a unique `<slug>~<token>` id) with
     /// this client as GM, and mounts the join lobby. A single-player campaign launches offline
@@ -660,26 +661,43 @@ pub fn mint_room_id(slug: &str) -> String {
     format!("{slug}~{}", random_suffix())
 }
 
+/// Canonicalize a campaign id: the short deep-link aliases [`bundled`] accepts map to their
+/// registry slug, so `?campaign=solomons` routes, resolves, and boots everywhere
+/// `solomons-rest` does (mirror [`bundled`]'s alias arms here — an alias only it knows is a
+/// dead deep link that lands on the menu).
+fn canonical_campaign(slug: &str) -> &str {
+    match slug {
+        "crypt" => "demo",
+        "facade" => "facade-free-vs-advancing",
+        "g2-status-bar" => "status-bar",
+        "hollow" => "hollow-house",
+        "solomons" => "solomons-rest",
+        "g2-villain" => "villain",
+        other => other,
+    }
+}
+
 /// Resolve a `?campaign=` value to its launcher metadata, or `None` for an absent/unknown one (→ menu).
-/// Accepts a room id (`<slug>~<token>`) and resolves it to its base campaign, so a shared/hosted room
-/// still shows the right title, surfaces, and welcome.
+/// Accepts a room id (`<slug>~<token>`) and resolves it to its base campaign — so a shared/hosted room
+/// still shows the right title, surfaces, and welcome — and the short deep-link aliases
+/// ([`canonical_campaign`]).
 pub fn resolve_campaign_info(slug: Option<&str>) -> Option<&'static CampaignInfo> {
-    let slug = base_campaign(slug?);
+    let slug = canonical_campaign(base_campaign(slug?));
     if slug == PLAYTEST_CAMPAIGN {
         return playtest_available().then_some(&PLAYTEST_INFO);
     }
     campaign_registry().iter().find(|c| c.slug == slug)
 }
 
-/// Whether a campaign is selectable given the debug flag: the shipped campaign always is; debug-only
-/// ones require `?debug`.
+/// Whether a campaign is selectable given the debug flag: the shipped campaigns always are;
+/// debug-only ones require `?debug`.
 fn visible(info: &CampaignInfo, debug: bool) -> bool {
     !info.debug || debug
 }
 
-/// The campaigns the launcher menu should list, in order: the shipped Hollow House always, plus the
-/// debug/conformance campaigns when `?debug` is present, plus the Studio playtest slot while one is
-/// saved.
+/// The campaigns the launcher menu should list, in order: the shipped campaigns (The Hollow
+/// House, Solomon's Rest, The Covenant) always, plus the debug/conformance campaigns when
+/// `?debug` is present, plus the Studio playtest slot while one is saved.
 pub fn menu_campaigns(debug: bool) -> Vec<&'static CampaignInfo> {
     let mut list: Vec<&'static CampaignInfo> = campaign_registry()
         .iter()
@@ -1331,6 +1349,31 @@ mod tests {
         assert!(
             menu_campaigns(true).iter().any(|c| c.slug == "demo"),
             "?debug includes the demo campaigns"
+        );
+    }
+
+    #[test]
+    fn deep_link_aliases_resolve_to_their_registry_entry() {
+        // Every alias `bundled` accepts must route too — an alias only the bundle table knows
+        // is a dead deep link (it would land on the menu and never boot).
+        for (alias, slug) in [
+            ("solomons", "solomons-rest"),
+            ("hollow", "hollow-house"),
+            ("crypt", "demo"),
+            ("facade", "facade-free-vs-advancing"),
+            ("g2-status-bar", "status-bar"),
+            ("g2-villain", "villain"),
+        ] {
+            assert_eq!(
+                resolve_campaign_info(Some(alias)).map(|c| c.slug),
+                Some(slug),
+                "alias '{alias}'"
+            );
+        }
+        // Debug gating still applies through an alias: crypt (= demo) stays behind ?debug.
+        assert_eq!(
+            resolve_route(Some("crypt"), None, false),
+            LauncherRoute::Menu
         );
     }
 

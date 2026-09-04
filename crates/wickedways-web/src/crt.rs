@@ -419,13 +419,13 @@ pub fn crt_app() -> Element {
                                 snapshot: coord.snapshot(),
                                 map: map_model.read().serialize(),
                             };
-                            match savestore::save("slot1", &blob) {
+                            match savestore::save_for(&cfg.campaign, &blob) {
                                 Ok(()) => narration.write().push("Saved.".into()),
                                 Err(e) => narration.write().push(format!("Save failed: {e}")),
                             }
                         }
                         Some(MetaEffect::Restore) if cfg.mode == Mode::Single => {
-                            match savestore::load("slot1") {
+                            match savestore::load_for(&cfg.campaign) {
                                 Some(blob) => {
                                     // Rebuild the offline authority from the saved snapshot (with the
                                     // campaign catalog) and hydrate the saved fog-of-war map.

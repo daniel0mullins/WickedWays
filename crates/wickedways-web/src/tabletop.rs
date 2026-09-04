@@ -47,7 +47,8 @@ const TABLETOP_CSS: &str = include_str!("../assets/tabletop.css");
 /// Pixel scale applied to the fog-of-war layout so the minimap grid reads as a chunky game board.
 const SCALE: f64 = 2.6;
 
-/// The most extra explorers a hotseat party can add beyond the pre-seated seat 0.
+/// The hotseat party cap is `MAX_EXTRA_SEATS + 1` TOTAL seats: a genesis pre-seated with one PC
+/// can add this many explorers, and a fully-authored four-seat party can add none.
 const MAX_EXTRA_SEATS: usize = 3;
 
 /// One line in the running log, with a CSS class for its role.
@@ -178,6 +179,20 @@ pub fn tabletop_app() -> Element {
             .ok()
             .map(|(snap, _)| archetype_options(&snap))
             .unwrap_or_default()
+    });
+    // The genesis's pre-seated roster, rendered as the builder's fixed rows (seat 1 is "you").
+    // A fully-authored party (Solomon's Rest's four teens) fills the table and leaves no room
+    // for extra explorers; a malformed genesis falls back to one generic seat.
+    let preseats = use_hook(|| {
+        let names = bundled_campaign(&read_config().campaign)
+            .ok()
+            .map(|(snap, _)| preseat_names(&snap))
+            .unwrap_or_default();
+        if names.is_empty() {
+            vec!["You".to_string()]
+        } else {
+            names
+        }
     });
     // The extra explorers the host adds in the setup screen (single-player only).
     let drafts = use_signal(Vec::<SeatDraft>::new);
@@ -313,7 +328,7 @@ pub fn tabletop_app() -> Element {
                                     snapshot: coord.snapshot(),
                                     map: map_model.read().serialize(),
                                 };
-                                match savestore::save("slot1", &blob) {
+                                match savestore::save_for(&cfg.campaign, &blob) {
                                     Ok(()) => log.write().push(LogLine::plain("Saved.".into())),
                                     Err(e) => log
                                         .write()
@@ -327,7 +342,7 @@ pub fn tabletop_app() -> Element {
                         }
                         TtAction::Restore => {
                             if cfg.mode == Mode::Single {
-                                match savestore::load("slot1") {
+                                match savestore::load_for(&cfg.campaign) {
                                     Some(blob) => {
                                         let (t, c) = rebuild_single(blob.snapshot, catalog.clone());
                                         transport = t;
@@ -659,10 +674,22 @@ pub fn tabletop_app() -> Element {
 
             // ── Setup / welcome overlay ─────────────────────────────────────────
             if !started() {
-                {setup_view(&welcome.title, &welcome.intro, &welcome.button, &arche_opts, drafts, started, driver)}
+                {setup_view(&welcome.title, &welcome.intro, &welcome.button, &preseats, &arche_opts, drafts, started, driver)}
             }
         }
     }
+}
+
+/// The genesis's pre-seated party names, in party order — the roster the setup overlay renders
+/// as its fixed rows. Empty only for a malformed genesis (the caller falls back to one seat).
+fn preseat_names(snapshot: &wickedways_core::CampaignSnapshot) -> Vec<String> {
+    snapshot
+        .campaign
+        .party_ids
+        .iter()
+        .filter_map(|id| snapshot.characters.iter().find(|c| &c.id == id))
+        .map(|c| c.name.clone())
+        .collect()
 }
 
 /// The active seat's name, from the device dashboards.
@@ -973,19 +1000,25 @@ fn inventory_view(
     }
 }
 
-/// The party-builder / welcome overlay (single-player): the pre-seated seat is Player 1; the host adds
-/// up to [`MAX_EXTRA_SEATS`] more explorers, then Begin joins them and boots the hotseat.
+/// The party-builder / welcome overlay (single-player): the genesis's pre-seated roster renders as
+/// the fixed rows (seat 1 is "you" — in hotseat you drive every seat), and the host may add
+/// explorers up to a party of [`MAX_EXTRA_SEATS`]` + 1` total — so a fully-authored party
+/// (Solomon's Rest's four teens) shows all four names and takes no extras. Begin joins any added
+/// seats and boots the hotseat.
+#[allow(clippy::too_many_arguments)] // one row of display params per overlay concern; a struct would just rename them
 fn setup_view(
     title: &str,
     intro: &str,
     button: &str,
+    preseats: &[String],
     arche_opts: &[ArchetypeOption],
     mut drafts: Signal<Vec<SeatDraft>>,
     mut started: Signal<bool>,
     driver: Coroutine<TtAction>,
 ) -> Element {
     let rows = drafts();
-    let can_add = rows.len() < MAX_EXTRA_SEATS;
+    let can_add = preseats.len() + rows.len() < MAX_EXTRA_SEATS + 1;
+    let base = preseats.len();
     let button = if button.is_empty() {
         "Enter".to_string()
     } else {
@@ -998,17 +1031,24 @@ fn setup_view(
 
             div { class: "tt-party",
                 div { class: "tt-party-head", "Your party" }
-                div { class: "tt-party-row fixed",
-                    span { class: "tt-party-num", "1" }
-                    span { class: "tt-party-name", "The Heir (you)" }
+                for (i, name) in preseats.iter().enumerate() {
+                    {
+                        let label = if i == 0 { format!("{name} (you)") } else { name.clone() };
+                        rsx! {
+                            div { key: "pre-{i}", class: "tt-party-row fixed",
+                                span { class: "tt-party-num", "{i + 1}" }
+                                span { class: "tt-party-name", "{label}" }
+                            }
+                        }
+                    }
                 }
                 for (i, row) in rows.iter().enumerate() {
                     div { key: "draft-{i}", class: "tt-party-row",
-                        span { class: "tt-party-num", "{i + 2}" }
+                        span { class: "tt-party-num", "{base + i + 1}" }
                         input {
                             class: "tt-party-name-input",
                             r#type: "text",
-                            placeholder: "Explorer {i + 2}",
+                            placeholder: "Explorer {base + i + 1}",
                             value: "{row.name}",
                             oninput: move |e| { drafts.write()[i].name = e.value(); },
                         }
