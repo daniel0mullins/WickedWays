@@ -816,12 +816,22 @@ fn dock_bar(v: &ViewModel) -> Element {
             if !v.exits.is_empty() || !v.locked_doors.is_empty() {
                 {chip_section("Exits".into(), rsx! {
                     for e in v.exits.iter() {
-                        span { key: "{e.dir.as_key()}", class: "chip", "{e.dir.as_key()} → {e.to_name}" }
+                        {
+                            let dir = crate::affordances::cap(e.dir);
+                            rsx! {
+                                span { key: "{e.dir.as_key()}", class: "chip", "{dir} → {e.to_name}" }
+                            }
+                        }
                     }
                     for d in v.locked_doors.iter() {
-                        span { key: "locked-{d.dir.as_key()}", class: "chip",
-                            "{d.dir.as_key()} → {d.name} "
-                            span { class: "meta", "(locked)" }
+                        {
+                            let dir = crate::affordances::cap(d.dir);
+                            rsx! {
+                                span { key: "locked-{d.dir.as_key()}", class: "chip",
+                                    "{dir} → {d.name} "
+                                    span { class: "meta", "(locked)" }
+                                }
+                            }
                         }
                     }
                 })}

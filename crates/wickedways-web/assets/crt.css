@@ -170,6 +170,8 @@
   opacity: 0.65;
 }
 .chips { display: flex; flex-wrap: wrap; gap: 0.3168em 0.6336em; }
+/* The exits dock separates its chips with a dim bullet ("North → Foyer • West → Hall"). */
+.dock .chip + .chip::before { content: "• "; opacity: 0.45; }
 /* A chip wraps internally when it must (a sentence-long loot description) instead of
    blowing the column wide and painting past the screen. */
 .chip { max-width: 100%; overflow-wrap: anywhere; }
