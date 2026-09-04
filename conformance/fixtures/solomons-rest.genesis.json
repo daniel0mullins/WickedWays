@@ -50,6 +50,20 @@
           "fear"
         ],
         "name": "The Cheer Captain"
+      },
+      {
+        "baseStats": {
+          "energy": 12.0,
+          "health": 20.0,
+          "sanity": 12.0
+        },
+        "id": "sexton",
+        "immunities": [
+          "fear",
+          "panic",
+          "confused"
+        ],
+        "name": "The Sexton"
       }
     ],
     "avPolicy": {
@@ -92,7 +106,7 @@
       ]
     },
     "encountered": [],
-    "gmId": "player:Alex",
+    "gmId": "player:The Sexton",
     "id": "campaign:The Dare at Solomon's Rest",
     "knownRecipes": [
       "field-torch",
@@ -158,10 +172,7 @@
     ],
     "outcome": "ongoing",
     "partyIds": [
-      "player:Alex",
-      "player:Priya",
-      "player:Brock",
-      "player:Tiffany"
+      "player:The Sexton"
     ],
     "round": 0,
     "started": false,
@@ -170,7 +181,7 @@
     },
     "title": "The Dare at Solomon's Rest",
     "villain": {
-      "characterId": "mob:The Sexton",
+      "characterId": "player:The Sexton",
       "deck": [
         "wicked:shadow-step",
         "wicked:shadow-step",
@@ -207,47 +218,10 @@
         "shakenOff": [],
         "turnsActive": {}
       },
-      "archetypeId": "quiet-one",
+      "archetypeId": "sexton",
       "archetypeImmunities": [
-        "panic"
-      ],
-      "currentRoomId": "room:Lychgate",
-      "equipment": {},
-      "history": [
-        {
-          "kind": "move",
-          "room": {
-            "id": "room:Lychgate",
-            "name": "Lychgate"
-          },
-          "round": 0
-        }
-      ],
-      "id": "player:Alex",
-      "inventory": {
-        "itemIds": [],
-        "keyIds": [],
-        "slots": 5
-      },
-      "kind": "player",
-      "name": "Alex",
-      "stats": {
-        "energy": 9.0,
-        "health": 9.0,
-        "sanity": 13.0
-      }
-    },
-    {
-      "actionsPerRound": 3,
-      "actionsThisRound": 1,
-      "afflictions": {
-        "active": {},
-        "immunity": {},
-        "shakenOff": [],
-        "turnsActive": {}
-      },
-      "archetypeId": "valedictorian",
-      "archetypeImmunities": [
+        "fear",
+        "panic",
         "confused"
       ],
       "currentRoomId": "room:Lychgate",
@@ -262,125 +236,14 @@
           "round": 0
         }
       ],
-      "id": "player:Priya",
-      "inventory": {
-        "itemIds": [],
-        "keyIds": [],
-        "slots": 6
-      },
-      "kind": "player",
-      "name": "Priya",
-      "stats": {
-        "energy": 8.0,
-        "health": 8.0,
-        "sanity": 14.0
-      }
-    },
-    {
-      "actionsPerRound": 3,
-      "actionsThisRound": 1,
-      "afflictions": {
-        "active": {},
-        "immunity": {},
-        "shakenOff": [],
-        "turnsActive": {}
-      },
-      "archetypeId": "quarterback",
-      "archetypeImmunities": [],
-      "currentRoomId": "room:Lychgate",
-      "equipment": {},
-      "history": [
-        {
-          "kind": "move",
-          "room": {
-            "id": "room:Lychgate",
-            "name": "Lychgate"
-          },
-          "round": 0
-        }
-      ],
-      "id": "player:Brock",
-      "inventory": {
-        "itemIds": [],
-        "keyIds": [],
-        "slots": 7
-      },
-      "kind": "player",
-      "name": "Brock",
-      "stats": {
-        "energy": 12.0,
-        "health": 14.0,
-        "sanity": 7.0
-      }
-    },
-    {
-      "actionsPerRound": 3,
-      "actionsThisRound": 1,
-      "afflictions": {
-        "active": {},
-        "immunity": {},
-        "shakenOff": [],
-        "turnsActive": {}
-      },
-      "archetypeId": "cheer-captain",
-      "archetypeImmunities": [
-        "fear"
-      ],
-      "currentRoomId": "room:Lychgate",
-      "equipment": {},
-      "history": [
-        {
-          "kind": "move",
-          "room": {
-            "id": "room:Lychgate",
-            "name": "Lychgate"
-          },
-          "round": 0
-        }
-      ],
-      "id": "player:Tiffany",
+      "id": "player:The Sexton",
       "inventory": {
         "itemIds": [],
         "keyIds": [],
         "slots": 5
       },
       "kind": "player",
-      "name": "Tiffany",
-      "stats": {
-        "energy": 14.0,
-        "health": 9.0,
-        "sanity": 8.0
-      }
-    },
-    {
-      "actionsPerRound": 2,
-      "actionsThisRound": 0,
-      "afflictions": {
-        "active": {},
-        "immunity": {},
-        "shakenOff": [],
-        "turnsActive": {}
-      },
-      "archetypeImmunities": [],
-      "baseEscapeChance": 80,
-      "currentRoomId": "room:Caretakers Lodge",
-      "equipment": {},
-      "history": [],
-      "id": "mob:The Sexton",
-      "inventory": {
-        "itemIds": [],
-        "keyIds": [],
-        "slots": 2
-      },
-      "kind": "mob",
-      "lightAverse": false,
-      "materialDrops": {},
       "name": "The Sexton",
-      "naturalAttack": {
-        "power": 10,
-        "stat": "health"
-      },
-      "origin": "room",
       "stats": {
         "energy": 12.0,
         "health": 20.0,
@@ -557,7 +420,7 @@
     },
     {
       "firstSeen": {
-        "characterId": "player:Alex",
+        "characterId": "player:The Sexton",
         "roomId": "room:Lychgate",
         "round": 0
       },
@@ -582,6 +445,13 @@
       "id": "loot:abandoned-backpack:item#1",
       "kind": "item",
       "modifier": 4
+    },
+    {
+      "behaviorKey": "sextons-spade",
+      "durability": 24,
+      "id": "loot:lodge-coat-hook:item#0",
+      "kind": "item",
+      "modifier": 8
     },
     {
       "behaviorKey": "shovel",
@@ -712,6 +582,14 @@
       ],
       "description": "Somebody's backpack, dropped at the gate. Whoever dared whoever, they left in a hurry.",
       "id": "loot:abandoned-backpack"
+    },
+    {
+      "capacity": 3,
+      "contentIds": [
+        "loot:lodge-coat-hook:item#0"
+      ],
+      "description": "The coat by the door hides a long-handled spade, its blade polished by a century of patient work.",
+      "id": "loot:lodge-coat-hook"
     },
     {
       "capacity": 4,
@@ -852,10 +730,7 @@
       "materialCacheIds": [],
       "name": "Lychgate",
       "occupantIds": [
-        "player:Alex",
-        "player:Priya",
-        "player:Brock",
-        "player:Tiffany"
+        "player:The Sexton"
       ],
       "scenes": [
         {
@@ -893,12 +768,12 @@
       "exits": {},
       "id": "room:Caretakers Lodge",
       "lightSourceIds": [],
-      "lootIds": [],
+      "lootIds": [
+        "loot:lodge-coat-hook"
+      ],
       "materialCacheIds": [],
       "name": "Caretakers Lodge",
-      "occupantIds": [
-        "mob:The Sexton"
-      ],
+      "occupantIds": [],
       "scenes": [],
       "spawnModifier": 0
     },

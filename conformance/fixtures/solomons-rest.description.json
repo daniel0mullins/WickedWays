@@ -46,6 +46,20 @@
         "fear"
       ],
       "name": "The Cheer Captain"
+    },
+    {
+      "baseStats": {
+        "energy": 12.0,
+        "health": 20.0,
+        "sanity": 12.0
+      },
+      "id": "sexton",
+      "immunities": [
+        "fear",
+        "panic",
+        "confused"
+      ],
+      "name": "The Sexton"
     }
   ],
   "caches": [
@@ -110,6 +124,14 @@
       ],
       "name": "tool-rack",
       "room": "Toolshed"
+    },
+    {
+      "description": "The coat by the door hides a long-handled spade, its blade polished by a century of patient work.",
+      "items": [
+        "sextons-spade"
+      ],
+      "name": "lodge-coat-hook",
+      "room": "Caretakers Lodge"
     },
     {
       "description": "A shelf of candles and one long processional torch, pitch-headed and ready.",
@@ -256,21 +278,6 @@
     }
   ],
   "mobs": [
-    {
-      "actionsPerRound": 2,
-      "baseEscapeChance": 80,
-      "name": "The Sexton",
-      "naturalAttack": {
-        "power": 10,
-        "stat": "health"
-      },
-      "room": "Caretakers Lodge",
-      "stats": {
-        "energy": 12.0,
-        "health": 20.0,
-        "sanity": 12.0
-      }
-    },
     {
       "drops": [
         "founder-key"
@@ -454,7 +461,7 @@
   },
   "title": "The Dare at Solomon's Rest",
   "villain": {
-    "character": "The Sexton",
+    "character": "@gm",
     "deck": [
       "wicked:shadow-step",
       "wicked:shadow-step",

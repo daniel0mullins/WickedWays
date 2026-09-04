@@ -1,14 +1,16 @@
 # The Dare at Solomon's Rest — survive one night in the old Masonic cemetery.
 #
-# Four teenagers take a dare: last until daybreak inside the locked gates of
-# Solomon's Rest. The Sexton — the cemetery's dead groundskeeper — hunts them
-# with a deck of Wicked Ways cards built to split the party, because the old
-# compact only lets him take the living when they are ALONE. The map is
+# A MULTIPLAYER campaign: teenagers take a dare — last until daybreak inside
+# the locked gates of Solomon's Rest — and the GM plays the Sexton, the
+# cemetery's dead groundskeeper (the "@gm" Villain), hunting them with a deck
+# of Wicked Ways cards built to split the party, because the old compact only
+# lets him take the living when they are ALONE. Players self-join their teens
+# in the lobby; the host's pre-seated GM character IS the Sexton. The map is
 # procedurally generated ([mapGen]): every playthrough lays the yards, crypts,
 # and paths out differently, with the two locked crypts (`sealed`) always
 # behind their keyed doors. A world-scoped night clock (worldGet/setWorld)
-# marches toward daybreak; the party wins if ANYONE is still conscious when it
-# strikes, and loses when the whole party is dead or incapacitated.
+# marches toward daybreak; the teens win if ANY of them is still conscious
+# when it strikes, and lose when every teen is dead or incapacitated.
 
 title = "The Dare at Solomon's Rest"
 startRoom = "Lychgate"
@@ -47,6 +49,16 @@ image = "solomons-rest/the-cheer-captain.png"
 name = "The Cheer Captain"
 baseStats = { health = 9, sanity = 8, energy = 14 }
 immunities = ["fear"]
+
+# The GM's own archetype: the host seats as the Sexton (the "@gm" Villain).
+# The compact (lone-prey) already zeroes all damage against him — the statline
+# is padding, not protection — and being dead leaves nothing to frighten.
+[[archetypes]]
+id = "sexton"
+image = "solomons-rest/the-sexton.png"
+name = "The Sexton"
+baseStats = { health = 20, sanity = 12, energy = 12 }
+immunities = ["fear", "panic", "confused"]
 
 # ── Rooms (the map is generated — no [[exits]]; see [mapGen] below) ──────────
 [[rooms]]
@@ -177,18 +189,11 @@ name = "founders bronze door"
 initialState = { unlocked = false }
 
 # ── Mobs ─────────────────────────────────────────────────────────────────────
-# THE VILLAIN. He cannot be harmed at all, and he cannot harm YOU while a
-# conscious friend stands in the same room (see the lone-prey mechanic) — a
-# rule the night reveals piece by piece.
-[[mobs]]
-name = "The Sexton"
-image = "solomons-rest/the-sexton.png"
-stats = { health = 20, sanity = 12, energy = 12 }
-room = "Caretakers Lodge"
-naturalAttack = { stat = "health", power = 10 }
-actionsPerRound = 2
-baseEscapeChance = 80
-
+# The Sexton is NOT a mob: he is the "@gm" Villain (see [villain] below) — the
+# GM's own seated character. He cannot be harmed at all, and he cannot harm a
+# teen while a conscious friend stands in the same room (see the lone-prey
+# mechanic) — a rule the night reveals piece by piece.
+#
 # Supernatural — each falls only to its bane (see the grave-wards mechanic).
 [[mobs]]
 name = "Wight of the Founder"
@@ -260,6 +265,14 @@ image = "solomons-rest/tool-rack.png"
 room = "Toolshed"
 items = ["shovel", "lantern"]
 description = "A rack of grave-tender's tools."
+
+# The Sexton's own working tool, waiting where he left it. The GM makes for the
+# lodge first — though nothing stops a teen who gets there before him.
+[[loot]]
+name = "lodge-coat-hook"
+room = "Caretakers Lodge"
+items = ["sextons-spade"]
+description = "The coat by the door hides a long-handled spade, its blade polished by a century of patient work."
 
 [[loot]]
 name = "votive-shelf"
@@ -394,8 +407,10 @@ key = "founders-reveal"
 phase = "enter"
 
 # ── The Villain & his deck ───────────────────────────────────────────────────
+# "@gm": the seated GM plays the Sexton — a real seat that takes real turns,
+# moves, swings the spade, and spends the deck through the villain panel.
 [villain]
-character = "The Sexton"
+character = "@gm"
 deck = [
   "wicked:shadow-step", "wicked:shadow-step", "wicked:shadow-step",
   "wicked:scatter", "wicked:scatter",
@@ -437,14 +452,17 @@ name = "Cold Hands from Below"
 text = "Fingers close around every living ankle in the yard."
 
 # ── Victory ──────────────────────────────────────────────────────────────────
+# The Sexton is IN the party (the "@gm" Villain is a real seat), so both
+# conditions read the teens only — he never counts as a survivor, and the
+# flock is taken when every seat but his is down.
 [[victory.win]]
 key = "survived-to-daybreak"
-test = "worldGet('daybreak', false) && some(party, !includes(element.status, 'ko'))"
+test = "worldGet('daybreak', false) && some(party, element.id != 'player:The Sexton' && !includes(element.status, 'ko'))"
 narration = "Gray light crests the yews, and the birdsong is suddenly, absurdly ordinary. Down the rows a lantern gutters out, a spade is shouldered, and the Sexton goes below without a backward glance. The lychgate stands open. Whoever is still on their feet walks out of Solomon's Rest — and nobody ever takes the dare again."
 
 [[victory.lose]]
 key = "the-flock-is-taken"
-test = "length(party) > 0 && every(party, includes(element.status, 'ko'))"
+test = "length(party) > 1 && every(party, element.id == 'player:The Sexton' || includes(element.status, 'ko'))"
 narration = "The last of you goes down, and the yard falls quiet. Unhurried footsteps. The scrape of a spade. The Sexton works until the sky pales, and by morning Solomon's Rest has four new mounds, unmarked, dug together — because even now, he keeps you together."
 
 # ── Mechanic opt-ins (authored order is precedence) ──────────────────────────
@@ -554,6 +572,21 @@ maxDurability = 12
 recipe = { silver = 1 }
 lore = "Lodge silver, engraved: 'TO SPREAD THE CEMENT OF BROTHERLY LOVE.' The working tool of the craft — and, the old stories say, the one metal the beasts that never lived cannot abide."
 aliases = ["trowel", "silver"]
+
+# The Sexton's spade — the Villain's reach. Waiting in his lodge.
+[[items]]
+key = "sextons-spade"
+name = "The Sexton's Spade"
+type = "weapon"
+stat = "health"
+modifier = 8
+equippable = true
+destroyable = true
+slot = "hand"
+twoHanded = true
+maxDurability = 24
+lore = "A grave-digger's spade with a century of wear polished into the haft. It is heavier than it looks, and it swings like it wants to."
+aliases = ["spade", "sextons spade"]
 
 # Real weapons — very well hidden.
 [[items]]
@@ -813,9 +846,11 @@ onEnter = '''
 # The night clock — a Dread-style pressure that operates on the WORLD itself:
 # the hour lives in world-scoped state (worldGet/setWorld), every behavior and
 # the win condition can read it, and the villain's Black Bell can turn it back.
-# Every 3 rounds an hour passes; each passing hour wears 1 Sanity off everyone
-# still standing (the night itself is the tower being pulled). Hour 8 is
-# daybreak.
+# Every 3 rounds an hour passes; each passing hour wears 1 Sanity off every
+# teen still standing (the night itself is the tower being pulled). The Sexton
+# is party[0] (the GM seat) — the drain targets the joined teens, party[1..4];
+# an index past the seated party resolves to nothing and drops that emit. Hour
+# 8 is daybreak.
 [behaviors.mechanic.night-clock]
 init = { ticks = 0 }
 onRoundEnd = '''
@@ -832,10 +867,10 @@ onRoundEnd = '''
   when worldGet('hour', 0) + 1 < 8 {
     emit setWorld('hour', worldGet('hour', 0) + 1)
     emit cue(lookup(mapLit('1', 'The dusk-bell fades. Nine o clock, by the chapel chime, and the last daylight drains out of the sky.', '2', 'Ten o clock. The gravel paths have gone silver and strange, and the rows do not seem to line up the way they did.', '3', 'Eleven. A lantern crosses the yard where no path runs. It pauses whenever one of you stands apart from the others.', '4', 'Midnight. The chime goes on one stroke too long. In the after-ring you hear a spade bite earth, patient as a heartbeat.', '5', 'Two in the morning — the chime skipped one entirely. The Sexton has been seen at the edge of the light, waiting. Never while you stand together. Only ever near whoever is alone.', '6', 'Three. The fog comes up to the knee, and under it the ground feels freshly turned. All of it.', '7', 'False dawn — a lie of gray light. The digging sounds have stopped. That is somehow worse.'), str(worldGet('hour', 0) + 1)))
-    emit adjustStat(party[0], sanity, -1)
     emit adjustStat(party[1], sanity, -1)
     emit adjustStat(party[2], sanity, -1)
     emit adjustStat(party[3], sanity, -1)
+    emit adjustStat(party[4], sanity, -1)
   }
 '''
 
@@ -843,10 +878,12 @@ onRoundEnd = '''
 # his blows land ONLY on the sundered — a target with no conscious companion in
 # the room takes his full strength; a witnessed target takes nothing. This is
 # never stated outright: the party discovers it through zeroed blows, the
-# hour cues, the widow, and the ledger.
+# hour cues, the widow, and the ledger. The Sexton is a party seat (the "@gm"
+# Villain), so the witness test excludes him — he can never witness for his
+# own prey.
 [behaviors.mechanic.lone-prey]
 init = {}
-modifyDamage = "damage.target == 'mob:The Sexton' ? 0 : damage.source == 'mob:The Sexton' && some(party, element.id != damage.target && element.roomId == damage.room && !includes(element.status, 'ko')) ? 0 : damage.amount"
+modifyDamage = "damage.target == 'player:The Sexton' ? 0 : damage.source == 'player:The Sexton' && some(party, element.id != damage.target && element.id != 'player:The Sexton' && element.roomId == damage.room && !includes(element.status, 'ko')) ? 0 : damage.amount"
 
 # The old wards: each supernatural haunt falls only to its bane, wielded in
 # hand — fire for the wight, cold iron for the Tyler, lodge silver for the
@@ -865,8 +902,8 @@ onPlay = '''
 [behaviors.card.cold-hands]
 onPlay = '''
   emit cue('The ground softens like a held breath, and cold hands close around every living ankle in the yard. They do not pull. They just hold — and the holding is the worst of it.')
-  emit adjustStat(party[0], sanity, -3)
   emit adjustStat(party[1], sanity, -3)
   emit adjustStat(party[2], sanity, -3)
   emit adjustStat(party[3], sanity, -3)
+  emit adjustStat(party[4], sanity, -3)
 '''

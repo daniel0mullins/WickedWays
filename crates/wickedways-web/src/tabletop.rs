@@ -181,8 +181,8 @@ pub fn tabletop_app() -> Element {
             .unwrap_or_default()
     });
     // The genesis's pre-seated roster, rendered as the builder's fixed rows (seat 1 is "you").
-    // A fully-authored party (Solomon's Rest's four teens) fills the table and leaves no room
-    // for extra explorers; a malformed genesis falls back to one generic seat.
+    // A fully-authored party fills the table and leaves no room for extra explorers; a
+    // malformed genesis falls back to one generic seat.
     let preseats = use_hook(|| {
         let names = bundled_campaign(&read_config().campaign)
             .ok()
@@ -1002,9 +1002,8 @@ fn inventory_view(
 
 /// The party-builder / welcome overlay (single-player): the genesis's pre-seated roster renders as
 /// the fixed rows (seat 1 is "you" — in hotseat you drive every seat), and the host may add
-/// explorers up to a party of [`MAX_EXTRA_SEATS`]` + 1` total — so a fully-authored party
-/// (Solomon's Rest's four teens) shows all four names and takes no extras. Begin joins any added
-/// seats and boots the hotseat.
+/// explorers up to a party of [`MAX_EXTRA_SEATS`]` + 1` total — a fully-authored party shows all
+/// its names and takes no extras. Begin joins any added seats and boots the hotseat.
 #[allow(clippy::too_many_arguments)] // one row of display params per overlay concern; a struct would just rename them
 fn setup_view(
     title: &str,

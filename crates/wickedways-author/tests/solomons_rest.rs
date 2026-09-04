@@ -1,8 +1,9 @@
 //! Playability smoke test for the shipped Solomon's Rest campaign — NOT a
 //! golden gate (the campaign is not part of the conformance corpus; nothing
-//! here pins bytes). It proves the TOML compiles, assembles, seats a party,
-//! generates a connected map at `begin_campaign`, marches the night clock to
-//! daybreak, and enforces the Sexton's lone-prey compact.
+//! here pins bytes). It proves the TOML compiles, assembles, seats a full
+//! multiplayer table (the GM's Sexton — the "@gm" Villain — plus the four
+//! teens), generates a connected map at `begin_campaign`, marches the night
+//! clock to daybreak, and enforces the Sexton's lone-prey compact.
 
 use wickedways_assemble::{assemble, Seat};
 use wickedways_author::compile;
@@ -17,7 +18,13 @@ fn build_world(seed: u32) -> (World, wickedways_core::world::descriptor::Catalog
     ))
     .expect("read solomons-rest.toml");
     let compiled = compile(&src).expect("campaign compiles");
+    // The GM hosts as the Sexton (first seat = GM; the "@gm" villain resolves
+    // to him); the teens fill the table the way lobby joiners would.
     let seats = [
+        Seat {
+            name: "The Sexton".into(),
+            archetype: Some("sexton".into()),
+        },
         Seat {
             name: "Alex".into(),
             archetype: Some("quiet-one".into()),
@@ -153,7 +160,12 @@ fn the_sexton_harms_only_the_sundered() {
     let (mut w, cat) = build_world(9);
     let mut cues = Vec::new();
     w.begin_campaign(&cat, &mut cues).expect("begin");
-    let sexton = CharacterId("mob:The Sexton".into());
+    let sexton = CharacterId("player:The Sexton".into());
+    assert_eq!(
+        w.campaign.villain.as_ref().map(|v| v.character_id.clone()),
+        Some(sexton.clone()),
+        "the '@gm' villain resolved to the GM's seat"
+    );
     let alex = CharacterId("player:Alex".into());
     let priya = CharacterId("player:Priya".into());
 
@@ -180,8 +192,9 @@ fn the_sexton_harms_only_the_sundered() {
         "a witnessed hero takes nothing from the Sexton"
     );
 
-    // Move everyone but Alex away (via the villain-privileged teleport seam):
-    // the sundered take his full strength.
+    // Move every teen but Alex away (via the villain-privileged teleport
+    // seam). The Sexton himself still stands with Alex — and a villain can
+    // never witness for his own prey — so the sundered take his full strength.
     let far = RoomId("room:Bone Hollow".into());
     for other in [
         priya.clone(),

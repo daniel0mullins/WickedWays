@@ -25,7 +25,7 @@ Three ways to work with these files:
 |---|---|
 | `hollow-house.toml` | **The Hollow House** — the shipped nine-room campaign; the fullest example of the format. |
 | `covenant.toml` | **The Covenant** — the co-op multiplayer campaign (twin-ward victory needs two players). |
-| `solomons-rest.toml` | **The Dare at Solomon's Rest** — the cemetery survival campaign: a procedurally generated map (`[mapGen]`), a world-scoped daybreak clock (`worldGet`/`setWorld`), and a Villain whose party-splitting deck exploits his only-when-alone compact. The reference for all three features. |
+| `solomons-rest.toml` | **The Dare at Solomon's Rest** — the cemetery survival **multiplayer** campaign: teens self-join against the GM, who plays the Sexton (the `"@gm"` Villain). A procedurally generated map (`[mapGen]`), a world-scoped daybreak clock (`worldGet`/`setWorld`), and a party-splitting deck that exploits the Sexton's only-when-alone compact. The reference for all three features. |
 | `g2-*.toml` | Single-feature campaigns, one per engine mechanic (doors, mobs, scenes, victory, villain cards, …). Small, focused references for how each feature is authored — and the studio's template gallery. |
 
 ## Campaign art (`assets/`)

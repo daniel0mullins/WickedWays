@@ -107,6 +107,11 @@ COPY conformance/fixtures/sync-move.genesis.json ./genesis/demo.json
 # `catalog_for` picks up `<id>.catalog.json` automatically.
 COPY conformance/fixtures/covenant.genesis.json ./genesis/covenant.json
 COPY conformance/fixtures/covenant.catalog.json ./genesis/covenant.catalog.json
+# The Dare at Solomon's Rest — the teens-versus-the-GM's-Sexton multiplayer campaign
+# (`?campaign=solomons-rest`). Its catalog carries the authored behaviors the server resolves
+# ([mapGen] at begin, the lone-prey compact, the night clock, the Sexton's cards).
+COPY conformance/fixtures/solomons-rest.genesis.json ./genesis/solomons-rest.json
+COPY conformance/fixtures/solomons-rest.catalog.json ./genesis/solomons-rest.catalog.json
 # Campaign art: the `image` paths authored in campaigns/*.toml resolve under
 # `/assets` (the ASSETS_DIR route). Ships even when empty (README only).
 COPY campaigns/assets ./assets

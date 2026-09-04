@@ -20,7 +20,7 @@ use dioxus::prelude::*;
 
 use crate::crt::crt_app;
 use crate::driver::{
-    clear_params, debug_enabled, menu_campaigns, mint_room_id, read_config, read_route,
+    clear_params, debug_enabled, menu_campaigns_filtered, mint_room_id, read_config, read_route,
     resolve_campaign_info, resolve_route, set_params, surface_info, LauncherRoute, Mode,
 };
 use crate::lobby::MultiplayerLobby;
@@ -94,12 +94,16 @@ fn join_by_id(route: Signal<LauncherRoute>, id: &str, debug: bool) {
     navigate(route, resolve_route(Some(id), None, debug));
 }
 
-/// The campaign menu: the shipped Hollow House, plus the debug/conformance campaigns when `?debug`.
-/// Selecting one follows [`resolve_route`] (straight to the surface, or the picker if it offers ≥ 2). A
-/// component (not an inline builder) because it owns a hook (`join_id`) — see the `match` in
-/// [`launcher_app`].
+/// The campaign menu, split by a **single-player / multiplayer filter**: the filter switches which
+/// bucket of campaigns is listed ([`menu_campaigns_filtered`]), and selecting one launches it in
+/// that bucket's mode (offline, or hosting a room). Join-by-id lives under the multiplayer filter.
+/// A build with no multiplayer transport (the desktop app) shows the single-player list only, with
+/// no filter and no join-by-id. Selecting follows [`resolve_route`] (straight to the surface, or
+/// the picker if it offers ≥ 2). A component (not an inline builder) because it owns hooks
+/// (`join_id`, `show_multi`) — see the `match` in [`launcher_app`].
 #[component]
 fn MenuView(route: Signal<LauncherRoute>, debug: bool) -> Element {
+    let mut show_multi = use_signal(|| false);
     let join_id = use_signal(String::new);
     let mut join_err = use_signal(String::new);
     // Try to join the id in the box; set a visible message instead of silently doing nothing when it's
@@ -120,9 +124,26 @@ fn MenuView(route: Signal<LauncherRoute>, debug: bool) -> Element {
             div { class: "launcher-menu",
                 h1 { class: "launcher-heading", "WICKEDWAYS" }
                 p { class: "launcher-sub", "Choose a campaign" }
-                // A build with no multiplayer transport (the desktop app) lists only the
-                // single-player campaigns and offers no join-by-id.
-                for c in menu_campaigns(debug).into_iter().filter(|c| crate::platform::MULTIPLAYER || !c.multiplayer) {
+                // The single-player / multiplayer filter. A build with no multiplayer
+                // transport (the desktop app) shows the single-player list only — no
+                // filter, no join-by-id.
+                if crate::platform::MULTIPLAYER {
+                    div { class: "launcher-filter",
+                        button {
+                            class: "launcher-filter-btn",
+                            class: if !show_multi() { "active" },
+                            onclick: move |_| show_multi.set(false),
+                            "Single-player"
+                        }
+                        button {
+                            class: "launcher-filter-btn",
+                            class: if show_multi() { "active" },
+                            onclick: move |_| show_multi.set(true),
+                            "Multiplayer"
+                        }
+                    }
+                }
+                for c in menu_campaigns_filtered(debug, crate::platform::MULTIPLAYER && show_multi()) {
                     button {
                         key: "{c.slug}",
                         class: "launcher-entry",
@@ -131,7 +152,7 @@ fn MenuView(route: Signal<LauncherRoute>, debug: bool) -> Element {
                         span { class: "launcher-blurb", "{c.blurb}" }
                     }
                 }
-                if crate::platform::MULTIPLAYER {
+                if crate::platform::MULTIPLAYER && show_multi() {
                 div { class: "launcher-joinbyid",
                     p { class: "launcher-joinlabel", "Have a game ID from a host? Join their game:" }
                     div { class: "launcher-joinrow",

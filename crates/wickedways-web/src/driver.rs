@@ -53,11 +53,13 @@ const HOLLOW_CATALOG: &str =
 // the launcher's `?campaign=` boot path requires.
 const COVENANT_GENESIS: &str = include_str!("../../../conformance/fixtures/covenant.genesis.json");
 const COVENANT_CATALOG: &str = include_str!("../../../conformance/fixtures/covenant.catalog.json");
-// The Dare at Solomon's Rest — the cemetery survival campaign (TOML → author → assemble, seated
-// with all four teen archetypes; single-player drives every seat, and the Sexton — a
-// computer-driven Villain — hunts whoever is left alone). The genesis is deliberately exit-less:
-// `[mapGen]` lays the yard out at `begin_campaign` from the boot seed, so every night deals a
-// fresh map.
+// The Dare at Solomon's Rest — the cemetery survival MULTIPLAYER campaign (TOML → author →
+// assemble, seated with only the GM host, who IS the Sexton — the campaign's "@gm" Villain).
+// Teens self-join their own seats at runtime (`JoinCampaign`), and the GM hunts whoever is left
+// alone, spending the Wicked Ways deck on his real turns. Designed for the room server; the
+// bundle here is the single-player fallback (no teens to hunt) the launcher's `?campaign=` boot
+// path requires. The genesis is deliberately exit-less: `[mapGen]` lays the yard out at
+// `begin_campaign` from the boot seed, so every hosted room deals a fresh map.
 const SOLOMONS_GENESIS: &str =
     include_str!("../../../conformance/fixtures/solomons-rest.genesis.json");
 const SOLOMONS_CATALOG: &str =
@@ -605,12 +607,12 @@ pub fn campaign_registry() -> &'static [CampaignInfo] {
         CampaignInfo {
             slug: "solomons-rest",
             title: "The Dare at Solomon's Rest",
-            blurb: "Four teens, one night in a Masonic cemetery that redraws its own paths. Survive to daybreak — the Sexton collects the lonely.",
-            intro: "The dare was simple: spend one night inside the gates of Solomon's Rest. But the yard never lays out the same way twice, the Sexton walks its rows with a hand of wicked cards, and his old compact binds him to take only the ones found alone. Keep the four of you together. Last until daybreak.",
+            blurb: "A multiplayer dare: teens versus the host's own Sexton, in a Masonic cemetery that redraws its paths. Survive to daybreak — he collects the lonely.",
+            intro: "The dare was simple: spend one night inside the gates of Solomon's Rest. But the yard never lays out the same way twice, and the Sexton — played by your host — walks its rows with a hand of wicked cards, his old compact binding him to take only the ones found alone. Stay together. Last until daybreak.",
             button_text: "Take the Dare",
             surfaces: BOTH_SURFACES,
             debug: false,
-            multiplayer: false,
+            multiplayer: true,
         },
         CampaignInfo {
             slug: "villain",
@@ -707,6 +709,18 @@ pub fn menu_campaigns(debug: bool) -> Vec<&'static CampaignInfo> {
         list.push(&PLAYTEST_INFO);
     }
     list
+}
+
+/// [`menu_campaigns`] narrowed to one of the launcher's filter buckets: the single-player
+/// campaigns (`multiplayer: false` — selecting one launches offline) or the multiplayer ones
+/// (`multiplayer: true` — selecting one hosts a room). The menu's filter control switches
+/// between the two lists; a build with no multiplayer transport shows only the single-player
+/// bucket and no filter at all.
+pub fn menu_campaigns_filtered(debug: bool, multiplayer: bool) -> Vec<&'static CampaignInfo> {
+    menu_campaigns(debug)
+        .into_iter()
+        .filter(|c| c.multiplayer == multiplayer)
+        .collect()
 }
 
 /// A campaign's welcome-screen text — the `CampaignManifest` display passthrough consumed by both
@@ -898,25 +912,56 @@ mod tests {
     }
 
     #[test]
-    fn solomons_rest_bundle_seats_the_four_teens_and_generates_its_map_at_begin() {
-        // The launcher bundle end-to-end: the committed genesis is pristine and EXIT-LESS
-        // ([mapGen] campaigns lay the yard out at begin), seats all four teen archetypes with
-        // the Sexton designated Villain, and BeginCampaign wires a playable map.
+    fn solomons_rest_bundle_hosts_the_sexton_and_teens_self_join_before_the_map_deals() {
+        // The multiplayer bundle end-to-end: the committed genesis is pristine and EXIT-LESS
+        // ([mapGen] campaigns lay the yard out at begin) and seats ONLY the GM host — who is
+        // the Sexton, the campaign's "@gm" Villain. Teens join their own seats pre-begin
+        // (the lobby's JoinCampaign + SelectArchetype path), and BeginCampaign wires a
+        // playable map under the full table.
         let (snapshot, catalog) = bundled_campaign("solomons-rest").unwrap();
-        assert_eq!(snapshot.campaign.party_ids.len(), 4, "four teens seated");
-        assert!(
-            snapshot.campaign.villain.is_some(),
-            "the Sexton is designated Villain"
+        assert_eq!(
+            snapshot.campaign.party_ids.len(),
+            1,
+            "only the GM host is pre-seated"
+        );
+        assert_eq!(
+            snapshot.campaign.villain.as_ref().map(|v| &v.character_id),
+            snapshot.campaign.gm_id.as_ref(),
+            "the '@gm' Villain is the GM's own seat"
         );
         assert!(
             snapshot.exits.is_empty(),
             "the genesis ships exit-less — mapGen deals the yard at begin"
         );
-        let (mut transport, mut coord) = rebuild_single(snapshot, catalog.clone());
+        let (transport, mut coord) = rebuild_single(snapshot.clone(), catalog.clone());
+        let mut transport = transport;
+        for (name, archetype) in [
+            ("Alex", "quiet-one"),
+            ("Priya", "valedictorian"),
+            ("Brock", "quarterback"),
+            ("Tiffany", "cheer-captain"),
+        ] {
+            let teen = build_joining_character(&snapshot, name, &format!("player:{name}"))
+                .expect("template seat");
+            for cmd in join_commands(teen, Some(archetype)) {
+                assert!(
+                    matches!(
+                        coord.submit(&mut transport, cmd),
+                        SubmitResult::Committed { .. }
+                    ),
+                    "{name} joins pre-begin"
+                );
+            }
+        }
         assert!(matches!(
             coord.submit(&mut transport, Command::BeginCampaign),
             SubmitResult::Committed { .. }
         ));
+        assert_eq!(
+            coord.replica().campaign.party_ids.len(),
+            5,
+            "the Sexton and four teens at the table"
+        );
         assert!(
             !coord.replica().exits.is_empty(),
             "begin generated the map's exits"
@@ -1332,8 +1377,8 @@ mod tests {
 
     #[test]
     fn the_menu_lists_the_shipped_campaigns_and_debug_adds_the_rest() {
-        // The default menu shows the shipped campaigns: Hollow House and Solomon's Rest
-        // (single-player) and The Covenant (multiplayer). The demo/conformance campaigns stay
+        // The default menu shows the shipped campaigns: The Hollow House (single-player) and
+        // Solomon's Rest and The Covenant (multiplayer). The demo/conformance campaigns stay
         // behind `?debug`.
         let shipped: Vec<_> = menu_campaigns(false).iter().map(|c| c.slug).collect();
         assert_eq!(
@@ -1349,6 +1394,27 @@ mod tests {
         assert!(
             menu_campaigns(true).iter().any(|c| c.slug == "demo"),
             "?debug includes the demo campaigns"
+        );
+    }
+
+    #[test]
+    fn the_launcher_filter_splits_single_player_from_multiplayer() {
+        // The single-player bucket launches offline; the multiplayer bucket hosts a room —
+        // where Solomon's Rest now lives, beside The Covenant.
+        let single: Vec<_> = menu_campaigns_filtered(false, false)
+            .iter()
+            .map(|c| c.slug)
+            .collect();
+        assert_eq!(single, vec!["hollow-house"]);
+        let multi: Vec<_> = menu_campaigns_filtered(false, true)
+            .iter()
+            .map(|c| c.slug)
+            .collect();
+        assert_eq!(multi, vec!["solomons-rest", "covenant"]);
+        // The two buckets partition the whole menu, debug campaigns included.
+        assert_eq!(
+            menu_campaigns_filtered(true, false).len() + menu_campaigns_filtered(true, true).len(),
+            menu_campaigns(true).len(),
         );
     }
 
