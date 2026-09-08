@@ -72,10 +72,12 @@
   mix-blend-mode: multiply;
 }
 
-/* The pinned room panel: name, description, and contents chips. Never scrolls — the
-   transcript below is the left column's only scrolling region. */
+/* The pinned room panel: name, description, and contents chips. Prefers its full height,
+   but on a short screen it shrinks and scrolls internally rather than pushing the prompt
+   off the glass (the transcript gives way first — it has flex-basis 0). */
 .room-panel {
-  flex: 0 0 auto;
+  flex: 0 1 auto; min-height: 0;
+  overflow-y: auto;
   padding-bottom: 0.3696em;
   border-bottom: 1px solid color-mix(in srgb, var(--color-text) 20%, transparent);
 }
@@ -90,6 +92,10 @@
 .line.system { color: var(--color-accent); }
 
 .prompt {
+  /* Pinned like .controls: the input must survive a screen too short for the panels —
+     a squeezed prompt is an unplayable game (found with Solomon's Rest's tall mapGen
+     exit dock + room art in a near-square window). */
+  flex: 0 0 auto;
   display: flex; align-items: baseline; gap: 0.528em;
   border-top: 1px solid color-mix(in srgb, var(--color-text) 25%, transparent);
   padding-top: 0.4224em;
@@ -119,7 +125,10 @@
 /* Fixed bottom dock: the current room's exits + the inventory, pinned above the input prompt so
    they stay visible as the transcript scrolls. */
 .dock {
-  flex: 0 0 auto;
+  /* Like .room-panel: full height when it fits, internal scroll when the exit list
+     (mapGen can deal six ways out of a yard) meets a short screen. */
+  flex: 0 1 auto; min-height: 0;
+  overflow-y: auto;
   display: flex; flex-direction: column; gap: 0.1056em;
   padding-top: 0.4224em;
   border-top: 1px solid color-mix(in srgb, var(--color-text) 25%, transparent);
@@ -135,6 +144,8 @@
 .screen-cols {
   flex: 1 1 auto; min-height: 0;
   display: flex; gap: 1.2672em;
+  /* An over-tall column clips here instead of painting over the prompt/controls below. */
+  overflow: hidden;
 }
 .screen-main {
   flex: 2 1 0; min-width: 0; min-height: 0;
