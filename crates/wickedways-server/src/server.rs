@@ -5,7 +5,9 @@
 //! append by seat ownership, and drives presence/roster. Each connection authenticates on `join`;
 //! writes (`submit`) require an authenticated connection and a seat the caller owns. The only
 //! server-owned gate is seat ownership, checked against the actor the server reads from the command
-//! itself — no client-supplied actor envelope exists to forge.
+//! itself — no client-supplied actor envelope exists to forge. The same seat map decides what each
+//! connection *sees*: the table projects every snapshot/delta for its recipient, hiding the
+//! Villain's card piles from everyone but the villain's controller (see `wickedways_core::sync::redact`).
 //!
 //! Chat and A/V (`chatSend`/`callJoin`/`signal`/…) are **not implemented yet**: an inbound chat/AV
 //! frame is simply an unknown `ClientMsg` variant here (rejected as malformed) until those arms are
@@ -364,7 +366,9 @@ impl Connection {
                 campaign_id,
                 command,
             } => self.on_submit(campaign_id, command).await,
-            ClientMsg::GetSnapshot { campaign_id } => self.on_get_snapshot(campaign_id).await,
+            ClientMsg::GetSnapshot { campaign_id, token } => {
+                self.on_get_snapshot(campaign_id, token).await;
+            }
             ClientMsg::AssignSeat {
                 campaign_id,
                 character_id,
@@ -420,7 +424,9 @@ impl Connection {
             self.denied("unknown campaign");
             return;
         };
-        table.join(self.conn_id, self.send.clone(), from_seq).await;
+        table
+            .join(self.conn_id, id.clone(), self.send.clone(), from_seq)
+            .await;
         self.joined.insert(campaign_id.clone());
         self.server.bump(&campaign_id, &id, 1);
         self.server.broadcast_presence(&campaign_id).await;
@@ -466,16 +472,27 @@ impl Connection {
             }
             _ => None,
         };
-        let out = table.submit(command, self.send.clone(), on_commit).await;
+        let out = table
+            .submit(command, self.send.clone(), identity, on_commit)
+            .await;
         if matches!(actor, Actor::Join { .. }) && matches!(out, SubmitOutcome::Committed { .. }) {
             self.server.broadcast_presence(&campaign_id).await;
         }
     }
 
-    async fn on_get_snapshot(&self, campaign_id: String) {
-        // Read-only; pre-auth allowed.
+    async fn on_get_snapshot(&self, campaign_id: String, token: Option<String>) {
+        // Read-only; pre-auth allowed. The checkpoint is projected for its viewer: the connection's
+        // authenticated identity, else whoever `token` verifies to (the client seeds from
+        // `getSnapshot` BEFORE it joins, sending the token it will join with), else an anonymous
+        // viewer. Verifying the token here grants nothing — it only picks the projection; the
+        // connection stays unauthenticated until `join`.
+        let viewer = self.identity.clone().or_else(|| {
+            token
+                .as_deref()
+                .and_then(|t| (self.server.opts.verify_token)(t))
+        });
         match self.server.ensure_loaded(&campaign_id).await {
-            Some(table) => table.get_snapshot(self.send.clone()).await,
+            Some(table) => table.get_snapshot(self.send.clone(), viewer).await,
             None => self.reply(ServerMsg::Snapshot {
                 seq: 0,
                 snapshot: Value::Null,

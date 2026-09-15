@@ -106,6 +106,7 @@ impl Client {
         .await;
         self.send(ClientMsg::GetSnapshot {
             campaign_id: campaign.into(),
+            token: None,
         })
         .await;
         let snap = self

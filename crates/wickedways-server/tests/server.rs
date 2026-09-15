@@ -11,9 +11,10 @@
 use std::sync::{Arc, Mutex};
 
 use serde_json::{json, Value};
+use wickedways_core::sync::REDACTED_CARD_KEY;
 use wickedways_core::world::descriptor::Catalog;
 use wickedways_core::CampaignSnapshot;
-use wickedways_server::server::{Connection, RoomServer, ServerOptions};
+use wickedways_server::server::{CatalogFor, Connection, RoomServer, ServerOptions};
 use wickedways_server::store::{
     CampaignRecord, CampaignStore, MembershipState, SqliteStore, StoreError,
 };
@@ -308,6 +309,7 @@ async fn get_snapshot_returns_a_snapshot_and_null_for_unknown() {
     let (mut c, log) = conn(&s, 1);
     c.handle(ClientMsg::GetSnapshot {
         campaign_id: "demo".into(),
+        token: None,
     })
     .await;
     assert!(has(
@@ -317,12 +319,161 @@ async fn get_snapshot_returns_a_snapshot_and_null_for_unknown() {
 
     c.handle(ClientMsg::GetSnapshot {
         campaign_id: "nope".into(),
+        token: None,
     })
     .await;
     assert!(has(
         &log,
         |m| matches!(m, ServerMsg::Snapshot { seq: 0, snapshot } if snapshot.is_null())
     ));
+}
+
+// ── the Villain's hidden information: `getSnapshot` is projected for its viewer ───────────────
+
+fn solomons_rest() -> (CampaignSnapshot, Catalog) {
+    let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../conformance/fixtures");
+    let genesis = serde_json::from_str(
+        &std::fs::read_to_string(dir.join("solomons-rest.genesis.json")).expect("read genesis"),
+    )
+    .expect("parse genesis");
+    let catalog = serde_json::from_str(
+        &std::fs::read_to_string(dir.join("solomons-rest.catalog.json")).expect("read catalog"),
+    )
+    .expect("parse catalog");
+    (genesis, catalog)
+}
+
+/// A room server hosting Solomon's Rest (the `"@gm"` Villain campaign) as `rest`, GM identity `gm`.
+fn villain_server() -> Arc<RoomServer> {
+    let (g, cat) = solomons_rest();
+    let catalog_for: CatalogFor = Box::new(move |id: &str| (id == "rest").then(|| cat.clone()));
+    RoomServer::new(ServerOptions {
+        verify_token: Box::new(|t: &str| (!t.is_empty()).then(|| t.to_string())),
+        gm_identity_for: Box::new(|_| "gm".to_string()),
+        genesis_for: Box::new(move |id: &str| (id == "rest").then(|| g.clone())),
+        catalog_for: Some(catalog_for),
+        display_name_for: None,
+        catalog: Catalog::default(),
+        store: None,
+        rng_seed: Some(7),
+    })
+}
+
+fn get_snapshot(campaign: &str, token: Option<&str>) -> ClientMsg {
+    ClientMsg::GetSnapshot {
+        campaign_id: campaign.into(),
+        token: token.map(str::to_string),
+    }
+}
+
+/// The villain's draw pile in the LAST `snapshot` a connection received (at genesis the hand is
+/// empty and the deck is the authored 12 cards, so the deck is the pile that tells).
+fn last_snapshot_deck(log: &Arc<Mutex<Vec<ServerMsg>>>) -> Vec<String> {
+    let snap = log
+        .lock()
+        .unwrap()
+        .iter()
+        .rev()
+        .find_map(|m| match m {
+            ServerMsg::Snapshot { snapshot, .. } => Some(snapshot.clone()),
+            _ => None,
+        })
+        .expect("a snapshot");
+    let snap: CampaignSnapshot = serde_json::from_value(snap).expect("a campaign snapshot");
+    snap.campaign.villain.expect("a villain").deck
+}
+
+fn face_down(deck: &[String]) -> bool {
+    deck.len() == 12 && deck.iter().all(|k| k == REDACTED_CARD_KEY)
+}
+fn face_up(deck: &[String]) -> bool {
+    deck.len() == 12 && deck.iter().all(|k| k != REDACTED_CARD_KEY)
+}
+
+#[tokio::test]
+async fn get_snapshot_is_projected_for_the_token_it_carries_before_join() {
+    // The client seeds from `getSnapshot` BEFORE it joins, so the projection is chosen by the token
+    // it sends: the GM's token sees the Sexton's deck, a hero's token and no token do not.
+    let s = villain_server();
+    let (mut c, log) = conn(&s, 1);
+
+    c.handle(get_snapshot("rest", None)).await;
+    assert!(face_down(&last_snapshot_deck(&log)), "anonymous: blinded");
+
+    c.handle(get_snapshot("rest", Some("ada"))).await;
+    assert!(face_down(&last_snapshot_deck(&log)), "a hero: blinded");
+
+    c.handle(get_snapshot("rest", Some("gm"))).await;
+    assert!(
+        face_up(&last_snapshot_deck(&log)),
+        "the villain's seat: face-up"
+    );
+
+    // Carrying a token on `getSnapshot` authenticates nothing: a submit is still refused.
+    c.handle(submit("rest", json!({ "kind": "beginCampaign" })))
+        .await;
+    assert!(denied_with(&log, "not authenticated"));
+}
+
+#[tokio::test]
+async fn once_joined_the_connections_identity_decides_the_snapshot_projection() {
+    let s = villain_server();
+
+    // A joined GM gets the face-up checkpoint with no token at all.
+    let (mut gm, gm_log) = conn(&s, 1);
+    gm.handle(join("rest", "gm", 0)).await;
+    gm.handle(get_snapshot("rest", None)).await;
+    assert!(face_up(&last_snapshot_deck(&gm_log)));
+
+    // A joined hero cannot peek by naming the GM's token: the authenticated identity wins.
+    let (mut ada, ada_log) = conn(&s, 2);
+    ada.handle(join("rest", "ada", 0)).await;
+    ada.handle(get_snapshot("rest", Some("gm"))).await;
+    assert!(face_down(&last_snapshot_deck(&ada_log)));
+}
+
+#[tokio::test]
+async fn a_villain_commit_is_blinded_on_the_wire_for_every_other_connection() {
+    let s = villain_server();
+    let (mut gm, gm_log) = conn(&s, 1);
+    let (mut ada, ada_log) = conn(&s, 2);
+    gm.handle(join("rest", "gm", 0)).await;
+    ada.handle(join("rest", "ada", 0)).await;
+
+    // The GM begins the campaign: the Sexton's opening hand is dealt.
+    gm.handle(submit("rest", json!({ "kind": "beginCampaign" })))
+        .await;
+    assert!(committed(&gm_log));
+
+    let hand_of = |v: &Value| -> Vec<String> {
+        serde_json::from_value(v["campaignCore"]["core"]["villain"]["hand"].clone()).unwrap()
+    };
+    let gm_hand = has_delta(&gm_log, |m| match m {
+        ServerMsg::Committed { delta, .. } => Some(hand_of(delta)),
+        _ => None,
+    });
+    let ada_hand = has_delta(&ada_log, |m| match m {
+        ServerMsg::Entry { entry } => Some(hand_of(&entry.delta)),
+        _ => None,
+    });
+    assert_eq!(gm_hand.len(), 5);
+    assert!(
+        gm_hand.iter().all(|k| k != REDACTED_CARD_KEY),
+        "the GM's ack is face-up"
+    );
+    assert_eq!(ada_hand.len(), 5, "the hero sees the hand SIZE");
+    assert!(
+        ada_hand.iter().all(|k| k == REDACTED_CARD_KEY),
+        "…but every card is face-down"
+    );
+}
+
+fn has_delta<T>(log: &Arc<Mutex<Vec<ServerMsg>>>, f: impl Fn(&ServerMsg) -> Option<T>) -> T {
+    log.lock()
+        .unwrap()
+        .iter()
+        .find_map(f)
+        .expect("a delta-carrying message")
 }
 
 // ── persistence ───────────────────────────────────────────────────────────────────────────────

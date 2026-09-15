@@ -246,7 +246,9 @@ impl WsTransport {
         ws.set_onopen(None);
         drop(on_open);
 
-        // getSnapshot → seed the mirror.
+        // getSnapshot → seed the mirror. The token rides along so the server projects the checkpoint
+        // for THIS identity (the Villain's card piles are hidden from everyone but the villain's
+        // controller, and this fetch happens before `join` authenticates the connection).
         let snap_rx = {
             let (tx, rx) = oneshot::channel();
             inner.borrow_mut().snapshot_waiter = Some(tx);
@@ -256,6 +258,7 @@ impl WsTransport {
             &ws,
             &ClientMsg::GetSnapshot {
                 campaign_id: campaign_id.into(),
+                token: Some(token.into()),
             },
         );
         let (seq, snapshot) = snap_rx

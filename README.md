@@ -405,6 +405,23 @@ character** (authored as `character = "@gm"`); in single-player it is an authore
   serde-omitted when absent/default, so villain-less campaigns serialize no trace of the
   feature (the committed golden corpus is byte-unchanged). Sync deltas replicate the state
   automatically (the campaign core diffs wholesale).
+- **The hand is hidden information (multiplayer).** The authority keeps the full villain state
+  (it validates `playCard`/`mulligan` against the real hand), but the room server **projects
+  every outbound payload per recipient** (`sync::redact`, applied by the server's `Table`): the
+  `getSnapshot` checkpoint, the join backfill, the submitter's `committed`, and the `entry`
+  broadcast reach the identity that controls the villain's seat in full, and everyone else with
+  every card key in `hand`/`deck`/`discard` **blinded** to `?` (`REDACTED_CARD_KEY`). Pile
+  *sizes* stay public — what a physical table shows — while the hand's contents, the draw order,
+  and the discards do not; `characterId` and the per-turn latch are public. Visibility follows
+  control exactly: the seat's owner sees the cards (the GM for an `"@gm"` villain; a GM may take
+  a mob villain's seat via `assignSeat`), so a `transferGM` moves the role but not the hand.
+  Because the client seeds from `getSnapshot` *before* it `join`s, `getSnapshot` carries an
+  optional `token` the server projects for (a connection's authenticated identity wins once it
+  has joined; a token-less/anonymous request is blinded). Snapshot and delta *shapes* are
+  untouched — a projection at the wire boundary, not a schema change — so the goldens are
+  unaffected, a blinded replica converges to `redact_snapshot(authority)` byte-for-byte, and the
+  offline single-player host (which drives every seat) never redacts. The surfaces' face-up
+  gating (`isYou` + the GM identity) stays as the presentation rule; the wire now enforces it.
 - **Card economy.** The Villain starts with **5 cards** (`VILLAIN_HAND_SIZE`), dealt at
   `begin_campaign` after a deterministic `World.rng` shuffle of the authored deck (genesis
   stays pristine — deck in authored order, hand empty). On their turn they take at most
@@ -1202,7 +1219,10 @@ alongside the engine (see `docs/superpowers/specs/2026-07-14-rust-phase-2c-*`). 
   tokio actor (`Table`) that serializes submit → persist → ack (flush-before-ack), gates appends by
   seat ownership (`Membership`), persists to SQLite (`SqliteStore`), and speaks the
   `wickedways-transport` wire protocol over a `/ws` WebSocket endpoint. A two-client convergence e2e proves two replicas
-  converge over a real socket.
+  converge over a real socket. The same seat map decides what each connection *sees*: the `Table`
+  projects every snapshot and delta per recipient, blinding the Villain's card piles for everyone
+  but the villain's controller (see *The Villain & Wicked Ways Cards*), so a replica converges to
+  the authority — or, for a non-controller, to its redacted projection — byte-for-byte.
 
 The sync gate (`cargo test -p wickedways-assemble --test sync_gate`) replays the committed
 command-log goldens against the Rust authority and pins the deltas byte-for-byte. Chat and
