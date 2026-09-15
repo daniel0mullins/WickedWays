@@ -269,7 +269,7 @@ pub fn MultiplayerLobby(slug: String, on_enter: EventHandler<()>) -> Element {
                         input {
                             class: "lobby-input",
                             value: "{name}",
-                            placeholder: "Name your Warden",
+                            placeholder: "Name your character",
                             oninput: move |e| name.set(e.value()),
                         }
                         if !started() && !archetypes().is_empty() {
@@ -320,7 +320,7 @@ pub fn MultiplayerLobby(slug: String, on_enter: EventHandler<()>) -> Element {
                 }
 
                 div { class: "lobby-roster",
-                    h2 { class: "lobby-subtitle", "In the sanctum" }
+                    h2 { class: "lobby-subtitle", "At the table" }
                     if seat_rows.is_empty() && players.is_empty() {
                         p { class: "lobby-note", "No one has taken a seat yet." }
                     }

@@ -12,19 +12,31 @@
 //! shared mutable state across `.await` — the per-campaign submit serialization a genuinely async
 //! store requires. Different campaigns still run concurrently, each on its own task. Store I/O runs
 //! on the blocking pool via `spawn_blocking` (rusqlite is synchronous).
+//!
+//! **Per-recipient projection.** The authority holds the full state, but the Villain's card piles
+//! are hidden information (see [`wickedways_core::sync::redact`]). Every game payload the table
+//! emits — the `getSnapshot` checkpoint, the join backfill, the submitter's `committed`, and the
+//! `entry` broadcast — is projected for its recipient: in full for the identity that controls the
+//! villain's seat, with the piles blinded for everyone else (an anonymous `getSnapshot` viewer
+//! included). Persistence and the authority itself are never redacted.
 
+use std::cell::OnceCell;
 use std::collections::HashMap;
 use std::sync::Arc;
 
 use serde_json::Value;
 use tokio::sync::{mpsc, oneshot};
-use wickedways_core::sync::{AuthorityOpts, Command, SubmitResult, SyncAuthority};
+use wickedways_core::sync::{
+    delta_villain, redact_delta, redact_snapshot, AuthorityOpts, Command, Delta, SubmitResult,
+    SyncAuthority,
+};
 use wickedways_core::world::descriptor::Catalog;
+use wickedways_core::world::snapshot::VillainSnapshot;
 use wickedways_core::{CampaignSnapshot, World};
 
 use crate::membership::Membership;
 use crate::store::{CampaignRecord, CampaignStore, StoreError};
-use crate::transport::{ServerMsg, WireLogEntry};
+use crate::transport::{Actor, ServerMsg, WireLogEntry};
 
 /// A per-connection identity for the participant map (Rust closures are not comparable, so seats in
 /// the participant set are keyed by this rather than by callback identity).
@@ -46,6 +58,22 @@ pub type Subscriber = Arc<dyn Fn(ServerMsg) + Send + Sync>;
 /// captured); `Box` because callers hand in arbitrary closures, like passing any function value in
 /// JS.
 pub type OnCommit = Box<dyn FnOnce(&mut Membership) + Send>;
+
+/// A joined participant: the authenticated identity behind a connection and its outbound sink. The
+/// identity picks the [`Projection`] every game payload bound for it gets.
+struct Participant {
+    identity: String,
+    sub: Subscriber,
+}
+
+/// How a game payload is projected for one recipient: in full (the identity controlling the
+/// villain's seat — the GM for an `"@gm"` villain), or with the Villain's card piles blinded
+/// (everyone else). A villain-less payload has nothing to hide and is always `Full`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Projection {
+    Full,
+    Redacted,
+}
 
 /// The outcome of [`Table::submit`]: committed with its seq, or not committed (denied or
 /// persist-failed). The wire messages are emitted to subscribers as a side effect; this is the
@@ -86,7 +114,7 @@ pub struct MembershipView {
 pub struct Table {
     authority: SyncAuthority,
     membership: Membership,
-    participants: HashMap<ConnId, Subscriber>,
+    participants: HashMap<ConnId, Participant>,
     /// Durable store; `None` = ephemeral (persist/reload are no-ops).
     store: Option<Arc<dyn CampaignStore>>,
     campaign_id: String,
@@ -153,15 +181,30 @@ impl Table {
         &mut self.membership
     }
 
-    /// Registers a participant, acks the current head, then backfills entries after `from_seq`.
-    pub fn join(&mut self, conn: ConnId, sub: Subscriber, from_seq: u64) {
+    /// Registers a participant (authenticated as `identity`), acks the current head, then backfills
+    /// entries after `from_seq` — each projected for the joiner.
+    pub fn join(
+        &mut self,
+        conn: ConnId,
+        identity: impl Into<String>,
+        sub: Subscriber,
+        from_seq: u64,
+    ) {
+        let identity = identity.into();
         sub(ServerMsg::Joined { head: self.head() });
         for e in self.authority.entries_since(from_seq + 1) {
+            let projection = self.projection_for(Some(&identity), delta_villain(&e.delta));
             sub(ServerMsg::Entry {
-                entry: wire_entry(&e.command, &e.delta, e.seq, e.base_seq),
+                entry: WireLogEntry {
+                    seq: e.seq,
+                    base_seq: e.base_seq,
+                    command: serde_json::to_value(&e.command).unwrap_or(Value::Null),
+                    delta: wire_delta(&e.delta, projection),
+                },
             });
         }
-        self.participants.insert(conn, sub);
+        self.participants
+            .insert(conn, Participant { identity, sub });
     }
 
     /// Removes a participant (e.g. on disconnect).
@@ -169,32 +212,66 @@ impl Table {
         self.participants.remove(&conn);
     }
 
-    /// Sends the authority's latest checkpoint to `requester` (read-only; the server allows it pre-auth).
-    pub fn send_snapshot(&self, requester: &Subscriber) {
+    /// Sends the authority's latest checkpoint to `requester`, projected for `viewer` (read-only; the
+    /// server allows it pre-auth, so the viewer may be `None` — an anonymous requester, who gets the
+    /// redacted projection).
+    pub fn send_snapshot(&self, requester: &Subscriber, viewer: Option<&str>) {
         let (seq, snapshot) = self.authority.load_snapshot();
+        let snapshot = match self.projection_for(viewer, snapshot.campaign.villain.as_ref()) {
+            Projection::Full => serde_json::to_value(snapshot),
+            Projection::Redacted => {
+                let mut redacted = snapshot.clone();
+                redact_snapshot(&mut redacted);
+                serde_json::to_value(&redacted)
+            }
+        };
         requester(ServerMsg::Snapshot {
             seq: *seq,
-            snapshot: serde_json::to_value(snapshot).unwrap_or(Value::Null),
+            snapshot: snapshot.unwrap_or(Value::Null),
         });
     }
 
     /// Sends a server message to every current participant (used for presence).
     pub fn broadcast(&self, msg: &ServerMsg) {
         for p in self.participants.values() {
-            p(msg.clone());
+            (p.sub)(msg.clone());
+        }
+    }
+
+    /// The projection `identity` receives of a payload carrying `villain`: `Full` when the identity
+    /// may act as the villain's character — i.e. owns its seat, which the GM does for an `"@gm"`
+    /// villain (and may take for a mob villain via `assignSeat`) — `Redacted` for every other
+    /// identity and for an anonymous viewer. Visibility follows control exactly: the hand is shown
+    /// to precisely the identity whose `playCard`/`mulligan` the server would accept.
+    fn projection_for(
+        &self,
+        identity: Option<&str>,
+        villain: Option<&VillainSnapshot>,
+    ) -> Projection {
+        let Some(villain) = villain else {
+            return Projection::Full;
+        };
+        let actor = Actor::Character {
+            actor_id: villain.character_id.0.clone(),
+        };
+        match identity {
+            Some(id) if self.membership.may_act(id, &actor) => Projection::Full,
+            _ => Projection::Redacted,
         }
     }
 
     /// Resolves a command through the authority. `on_commit` (if given) runs AFTER the in-memory
     /// commit and BEFORE persistence, so a seat-claim it performs is written in the SAME atomic
-    /// `save` as the commit. On commit: persist (flush-before-ack), then ack `sender` with
-    /// `committed` and broadcast `entry` to every OTHER participant. On a persist failure: `reload`
-    /// (discarding the un-persisted commit + any `on_commit` mutation) and deny `sender` only. On an
-    /// authority denial: deny `sender` only.
+    /// `save` as the commit. On commit: persist (flush-before-ack), then ack `sender` (authenticated
+    /// as `sender_identity`) with `committed` and broadcast `entry` to every OTHER participant — each
+    /// payload projected for its recipient. On a persist failure: `reload` (discarding the
+    /// un-persisted commit + any `on_commit` mutation) and deny `sender` only. On an authority
+    /// denial: deny `sender` only.
     pub async fn submit(
         &mut self,
         command: Command,
         sender: &Subscriber,
+        sender_identity: &str,
         on_commit: Option<OnCommit>,
     ) -> SubmitOutcome {
         let (seq, delta) = match self.authority.submit(command.clone()) {
@@ -218,26 +295,38 @@ impl Table {
             return SubmitOutcome::NotCommitted;
         }
 
-        let delta = serde_json::to_value(&delta).unwrap_or(Value::Null);
+        // The seat claim above may have changed who controls the villain, so project only now.
+        // Each projection is serialized at most once, lazily: the common villain-less delta is one
+        // `Value` shared by everyone; a villain delta gets a redacted twin only if someone needs it.
+        let villain = delta_villain(&delta);
+        let full = OnceCell::new();
+        let redacted = OnceCell::new();
+        let wire_for = |projection: Projection| -> Value {
+            let cell = match projection {
+                Projection::Full => &full,
+                Projection::Redacted => &redacted,
+            };
+            cell.get_or_init(|| wire_delta(&delta, projection)).clone()
+        };
         let command = serde_json::to_value(&command).unwrap_or(Value::Null);
         sender(ServerMsg::Committed {
             seq,
-            delta: delta.clone(),
+            delta: wire_for(self.projection_for(Some(sender_identity), villain)),
         });
-        let entry = WireLogEntry {
-            seq,
-            base_seq: seq - 1,
-            command,
-            delta,
-        };
         for p in self.participants.values() {
             // Exclude the submitter (who already got `committed`); a not-yet-joined submitter is
             // simply absent from the map, so nothing special is needed.
-            if !Arc::ptr_eq(p, sender) {
-                p(ServerMsg::Entry {
-                    entry: entry.clone(),
-                });
+            if Arc::ptr_eq(&p.sub, sender) {
+                continue;
             }
+            (p.sub)(ServerMsg::Entry {
+                entry: WireLogEntry {
+                    seq,
+                    base_seq: seq - 1,
+                    command: command.clone(),
+                    delta: wire_for(self.projection_for(Some(&p.identity), villain)),
+                },
+            });
         }
         SubmitOutcome::Committed { seq }
     }
@@ -245,7 +334,8 @@ impl Table {
     /// Applies a GM seat-control mutation and persists it atomically (the mutation + the current
     /// snapshot land in one `save`). On a persist failure, reloads the last durable record
     /// (discarding the mutation) and returns `Err`. Done under the actor so it cannot interleave
-    /// with a submit.
+    /// with a submit. A mutation that moves the villain's seat changes who sees the cards from the
+    /// next core-carrying delta on (a turn change at the latest); no re-projection is pushed for it.
     pub async fn gm_mutate(&mut self, op: GmOp) -> Result<(), ()> {
         match op {
             GmOp::Assign {
@@ -323,18 +413,16 @@ impl Table {
 
 // ── helpers ───────────────────────────────────────────────────────────────────────────────────
 
-/// Builds a `WireLogEntry` (opaque `command`/`delta`) from a typed authority log entry.
-fn wire_entry(
-    command: &Command,
-    delta: &wickedways_core::sync::Delta,
-    seq: u64,
-    base_seq: u64,
-) -> WireLogEntry {
-    WireLogEntry {
-        seq,
-        base_seq,
-        command: serde_json::to_value(command).unwrap_or(Value::Null),
-        delta: serde_json::to_value(delta).unwrap_or(Value::Null),
+/// Serializes a typed delta into the opaque wire `delta`, in the given projection (a redacted
+/// projection blinds the villain's card piles on a copy; the authority's own log is never touched).
+fn wire_delta(delta: &Delta, projection: Projection) -> Value {
+    match projection {
+        Projection::Full => serde_json::to_value(delta).unwrap_or(Value::Null),
+        Projection::Redacted => {
+            let mut redacted = delta.clone();
+            redact_delta(&mut redacted);
+            serde_json::to_value(&redacted).unwrap_or(Value::Null)
+        }
     }
 }
 
@@ -370,6 +458,7 @@ pub enum TableMsg {
     // rather than relying on a later round-trip to drain the queue.
     Join {
         conn: ConnId,
+        identity: String,
         sub: Subscriber,
         from_seq: u64,
         reply: oneshot::Sender<()>,
@@ -381,11 +470,14 @@ pub enum TableMsg {
     Submit {
         command: Command,
         sender: Subscriber,
+        sender_identity: String,
         on_commit: Option<OnCommit>,
         reply: oneshot::Sender<SubmitOutcome>,
     },
     GetSnapshot {
         requester: Subscriber,
+        /// The identity the checkpoint is projected for; `None` = an anonymous (pre-auth) viewer.
+        viewer: Option<String>,
         reply: oneshot::Sender<()>,
     },
     Broadcast {
@@ -427,13 +519,15 @@ pub struct TableHandle {
 }
 
 impl TableHandle {
-    /// Registers a participant and backfills entries after `from_seq`; resolves once done.
-    pub async fn join(&self, conn: ConnId, sub: Subscriber, from_seq: u64) {
+    /// Registers a participant (authenticated as `identity`) and backfills entries after `from_seq`;
+    /// resolves once done.
+    pub async fn join(&self, conn: ConnId, identity: String, sub: Subscriber, from_seq: u64) {
         let (reply, rx) = oneshot::channel();
         if self
             .tx
             .send(TableMsg::Join {
                 conn,
+                identity,
                 sub,
                 from_seq,
                 reply,
@@ -453,11 +547,13 @@ impl TableHandle {
         }
     }
 
-    /// Submits a command; resolves once the actor has committed-or-denied (and persisted) it.
+    /// Submits a command from `sender` (authenticated as `sender_identity`); resolves once the actor
+    /// has committed-or-denied (and persisted) it.
     pub async fn submit(
         &self,
         command: Command,
         sender: Subscriber,
+        sender_identity: String,
         on_commit: Option<OnCommit>,
     ) -> SubmitOutcome {
         let (reply, rx) = oneshot::channel();
@@ -466,6 +562,7 @@ impl TableHandle {
             .send(TableMsg::Submit {
                 command,
                 sender,
+                sender_identity,
                 on_commit,
                 reply,
             })
@@ -477,12 +574,16 @@ impl TableHandle {
         rx.await.unwrap_or(SubmitOutcome::NotCommitted)
     }
 
-    /// Sends the latest checkpoint to `requester`; resolves once sent.
-    pub async fn get_snapshot(&self, requester: Subscriber) {
+    /// Sends the latest checkpoint to `requester`, projected for `viewer`; resolves once sent.
+    pub async fn get_snapshot(&self, requester: Subscriber, viewer: Option<String>) {
         let (reply, rx) = oneshot::channel();
         if self
             .tx
-            .send(TableMsg::GetSnapshot { requester, reply })
+            .send(TableMsg::GetSnapshot {
+                requester,
+                viewer,
+                reply,
+            })
             .await
             .is_ok()
         {
@@ -591,11 +692,12 @@ pub fn spawn_table(table: Table) -> TableHandle {
             match msg {
                 TableMsg::Join {
                     conn,
+                    identity,
                     sub,
                     from_seq,
                     reply,
                 } => {
-                    table.join(conn, sub, from_seq);
+                    table.join(conn, identity, sub, from_seq);
                     let _ = reply.send(());
                 }
                 TableMsg::Leave { conn, reply } => {
@@ -605,14 +707,21 @@ pub fn spawn_table(table: Table) -> TableHandle {
                 TableMsg::Submit {
                     command,
                     sender,
+                    sender_identity,
                     on_commit,
                     reply,
                 } => {
-                    let out = table.submit(command, &sender, on_commit).await;
+                    let out = table
+                        .submit(command, &sender, &sender_identity, on_commit)
+                        .await;
                     let _ = reply.send(out);
                 }
-                TableMsg::GetSnapshot { requester, reply } => {
-                    table.send_snapshot(&requester);
+                TableMsg::GetSnapshot {
+                    requester,
+                    viewer,
+                    reply,
+                } => {
+                    table.send_snapshot(&requester, viewer.as_deref());
                     let _ = reply.send(());
                 }
                 TableMsg::Broadcast { msg, reply } => {

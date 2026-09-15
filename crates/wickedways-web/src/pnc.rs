@@ -889,7 +889,9 @@ fn crafting_view(
 /// The Villain panel: the Wicked Ways hand. For the villain's own seat (GM identity, or
 /// single-player) each card shows face-up with a Play button and a toggle for the mulligan
 /// selection — "Mulligan (n/3)" fires once exactly three are marked. Everyone else sees only the
-/// villain's name and pile counts. Hidden entirely when the campaign has no villain.
+/// villain's name and pile counts — and in multiplayer that is all their replica holds, since the
+/// room server blinds the piles on the wire for every seat but the villain's
+/// (`wickedways_core::sync::redact`). Hidden entirely when the campaign has no villain.
 ///
 /// A room-targeted card (Shadow Step) plays through the MAP PICKER: its Play button stashes the
 /// card in `pending_card` and opens the map overlay, where clicking a room dispatches the play —

@@ -85,8 +85,18 @@ pub enum ClientMsg {
     },
     #[serde(rename_all = "camelCase")]
     Submit { campaign_id: String, command: Value },
+    /// Fetch the latest checkpoint. Read-only and allowed before `join`, but the snapshot is
+    /// **projected for its viewer** (the Villain's card piles are hidden from everyone but the
+    /// villain's controller): the server projects for the connection's authenticated identity, else
+    /// for the identity `token` verifies to, else for an anonymous viewer. A client fetches its seed
+    /// snapshot before it joins, so it sends the same token it will join with. Omitted on the wire
+    /// when absent, so the token-less shape is unchanged.
     #[serde(rename_all = "camelCase")]
-    GetSnapshot { campaign_id: String },
+    GetSnapshot {
+        campaign_id: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        token: Option<String>,
+    },
     #[serde(rename_all = "camelCase")]
     AssignSeat {
         campaign_id: String,
@@ -157,6 +167,7 @@ mod tests {
             json!({ "t": "join", "campaignId": "camp", "token": "tok", "fromSeq": 0 }),
             json!({ "t": "submit", "campaignId": "camp", "command": { "kind": "nextPlayer" } }),
             json!({ "t": "getSnapshot", "campaignId": "camp" }),
+            json!({ "t": "getSnapshot", "campaignId": "camp", "token": "tok" }),
             json!({ "t": "assignSeat", "campaignId": "camp", "characterId": "c1", "identity": "ada" }),
             json!({ "t": "unassignSeat", "campaignId": "camp", "characterId": "c1" }),
             json!({ "t": "transferGM", "campaignId": "camp", "identity": "ben" }),
@@ -211,6 +222,19 @@ mod tests {
             identity: "ada".into(),
         };
         assert_eq!(serde_json::to_value(&m).unwrap()["t"], json!("transferGM"));
+    }
+
+    /// `getSnapshot` omits an absent token entirely (the pre-token wire shape), never emits `null`.
+    #[test]
+    fn get_snapshot_omits_an_absent_token() {
+        let m = ClientMsg::GetSnapshot {
+            campaign_id: "camp".into(),
+            token: None,
+        };
+        assert_eq!(
+            serde_json::to_value(&m).unwrap(),
+            json!({ "t": "getSnapshot", "campaignId": "camp" })
+        );
     }
 
     /// An unclaimed seat serializes its owner as JSON `null`, never omits the field.

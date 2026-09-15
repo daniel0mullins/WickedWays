@@ -846,7 +846,10 @@ fn dock_bar(v: &ViewModel) -> Element {
 /// `may_see_hand` guards the face-up hand: `VillainView.is_you` reflects the ACTIVE seat, and in
 /// multiplayer every replica projects the active character's view — so while the GM-villain is
 /// acting, a player's client would otherwise render the hand too. Only the GM identity (or
-/// single-player, where you drive every seat) sees faces; everyone else sees pile counts.
+/// single-player, where you drive every seat) sees faces; everyone else sees pile counts. This is
+/// the presentation rule only: in multiplayer the room server blinds the piles on the wire for
+/// every seat but the villain's (`wickedways_core::sync::redact`), so a non-villain replica never
+/// holds a real card key to render.
 fn side_bar(v: &ViewModel, may_see_hand: bool) -> Element {
     let villain_section = v.villain.as_ref().map(|vn| {
         let show_hand = vn.is_you && may_see_hand;
